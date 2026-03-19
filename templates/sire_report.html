@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sire Report</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+</head>
+<body class="report-page-body">
+  <div class="report-page report-page-wide">
+    <div class="report-header">
+      <div>
+        <h1>Sire Report</h1>
+        <div class="report-subtitle">Vessel Position & Report Dashboard</div>
+      </div>
+
+      <div class="report-actions">
+        <button class="report-action-btn" onclick="window.print()">인쇄</button>
+        <button class="report-action-btn secondary" onclick="window.close()">닫기</button>
+      </div>
+    </div>
+
+    <div class="report-summary-grid report-summary-grid-wide">
+      <div class="report-summary-card report-summary-card-main">
+        <div class="label">Total 선박</div>
+        <div class="value">{{ total_count }}</div>
+      </div>
+
+      <div class="report-summary-card info">
+        <div class="label">SIRE 보유 선박</div>
+        <div class="value">{{ sire_vessel_count }}</div>
+      </div>
+
+      <div class="report-summary-card warning">
+        <div class="label">Sire 진행중 선박</div>
+        <div class="value">{{ sire_progress_count }}</div>
+      </div>
+    </div>
+
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>선박명</th>
+            <th>Type</th>
+            <th>관리사</th>
+            <th>선주감독</th>
+            <th>Cargo</th>
+
+            {% for i in visible_sire_indexes %}
+            <th>Sire {{ i }} 종류</th>
+            <th>Sire {{ i }} 날짜</th>
+            <th>Sire {{ i }} 상태</th>
+            <th>Sire {{ i }} 지적사항</th>
+            <th>Sire {{ i }} 잔여지적</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for vessel in vessels %}
+          <tr>
+            <td class="left strong">{{ vessel.name }}</td>
+            <td>{{ vessel.vessel_type or '' }}</td>
+            <td class="left">{{ vessel.management_company or '' }}</td>
+            <td>{{ vessel.owner_supervisor or '' }}</td>
+            <td>{{ vessel.cargo_status or '' }}</td>
+
+            {% for i in visible_sire_indexes %}
+            <td class="left">{{ vessel['sire_type_' ~ i] or '' }}</td>
+            <td>{{ vessel['sire_date_' ~ i] or '' }}</td>
+            <td>{{ vessel['sire_status_' ~ i] or '' }}</td>
+            <td>{{ vessel['sire_findings_' ~ i] or '' }}</td>
+            <td>{{ vessel['sire_open_findings_' ~ i] or '' }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
