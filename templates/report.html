@@ -41,32 +41,28 @@
             <th>관리사</th>
             <th>선주감독</th>
             <th>항차계획</th>
-
-            {% for i in visible_issue_indexes %}
-            <th>현안업무 {{ i }}</th>
-            <th>Critical {{ i }}</th>
-            {% endfor %}
+            <th>No.</th>
+            <th>현안업무</th>
+            <th>Critical</th>
           </tr>
         </thead>
         <tbody>
-          {% for vessel in vessels %}
+          {% for row in report_rows %}
           <tr>
-            <td class="left strong">{{ vessel.name }}</td>
-            <td>{{ vessel.vessel_type or '' }}</td>
-            <td class="left">{{ vessel.management_company or '' }}</td>
-            <td>{{ vessel.owner_supervisor or '' }}</td>
-            <td class="left">{{ vessel.voyage_plan or '' }}</td>
-
-            {% for i in visible_issue_indexes %}
-            <td class="left">{{ vessel['issue_' ~ i] or '' }}</td>
+            <td class="left strong">{{ row.name }}</td>
+            <td>{{ row.vessel_type or '' }}</td>
+            <td class="left">{{ row.management_company or '' }}</td>
+            <td>{{ row.owner_supervisor or '' }}</td>
+            <td class="left">{{ row.voyage_plan or '' }}</td>
+            <td>{{ row.issue_no }}</td>
+            <td class="left">{{ row.issue_text }}</td>
             <td>
-              {% if vessel['issue_' ~ i] and vessel['issue_' ~ i ~ '_critical'] == 1 %}
+              {% if row.issue_critical == 1 %}
                 YES
               {% else %}
-                {% if vessel['issue_' ~ i] %}NO{% endif %}
+                NO
               {% endif %}
             </td>
-            {% endfor %}
           </tr>
           {% endfor %}
         </tbody>

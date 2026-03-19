@@ -574,46 +574,50 @@ def add_no_cache_headers(response):
 def index():
     return render_template("index.html", version=get_version())
 
-@app.route("/report")
+
+@app.route('/report')
 def report_page():
-    vessels = get_all_vessels()
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM vessels ORDER BY name").fetchall()
+    vessels = [dict(row) for row in rows]
 
-    # 1. 현안업무가 하나라도 있는 선박만 표시
-    vessels_with_issue = [
-        v for v in vessels
-        if any(
-            str(v.get(f"issue_{i}", "")).strip()
-            for i in range(1, 16)
-        )
-    ]
+    report_rows = []
+    critical_vessel_names = set()
 
-    # 2. 실제 데이터가 있는 현안업무 열만 표시
-    visible_issue_indexes = []
-    for i in range(1, 16):
-        has_data = any(
-            str(v.get(f"issue_{i}", "")).strip()
-            for v in vessels_with_issue
-        )
-        if has_data:
-            visible_issue_indexes.append(i)
+    for vessel in vessels:
+        vessel_has_critical = False
 
-    # 3. CRITICAL 선박 수
-    critical_vessel_count = sum(
-        1 for v in vessels_with_issue
-        if any(
-            str(v.get(f"issue_{i}", "")).strip() and int(v.get(f"issue_{i}_critical", 0)) == 1
-            for i in range(1, 16)
-        )
-    )
+        for i in range(1, 16):
+            issue_text = (vessel.get(f'issue_{i}') or '').strip()
+            issue_critical = int(vessel.get(f'issue_{i}_critical') or 0)
+
+            if issue_text:
+                report_rows.append({
+                    'name': vessel.get('name', ''),
+                    'vessel_type': vessel.get('vessel_type', ''),
+                    'management_company': vessel.get('management_company', ''),
+                    'owner_supervisor': vessel.get('owner_supervisor', ''),
+                    'voyage_plan': vessel.get('voyage_plan', ''),
+                    'issue_no': i,
+                    'issue_text': issue_text,
+                    'issue_critical': issue_critical,
+                })
+
+                if issue_critical == 1:
+                    vessel_has_critical = True
+
+        if vessel_has_critical:
+            critical_vessel_names.add(vessel.get('name', ''))
 
     return render_template(
-        "report.html",
-        version=get_version(),
-        vessels=vessels_with_issue,
-        total_count=len(vessels),  # 전체 등록 선박 수
-        critical_vessel_count=critical_vessel_count,
-        visible_issue_indexes=visible_issue_indexes,
+        'report.html',
+        version=app.config.get('VERSION', '1'),
+        total_count=len(vessels),
+        critical_vessel_count=len(critical_vessel_names),
+        report_rows=report_rows,
     )
+
 
 @app.route("/api/vessels", methods=["GET"])
 def api_get_vessels():
@@ -824,52 +828,49 @@ def api_upload_report():
 
 
 
-@app.route("/coc-report")
-def coc_report_page():
-    vessels = get_all_vessels()
 
-    # 1️⃣ COC 데이터 있는 선박만 필터링
-    vessels_with_coc = [
-        v for v in vessels
-        if any(
-            str(v.get(f"coc_type_{i}", "")).strip()
-            or str(v.get(f"coc_summary_{i}", "")).strip()
-            or str(v.get(f"coc_due_date_{i}", "")).strip()
-            for i in range(1, 11)
-        )
-    ]
+@app.route('/coc-report')
+def coc_report():
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT * FROM vessels ORDER BY name").fetchall()
+    vessels = [dict(row) for row in rows]
 
-    # 2️⃣ 실제 표시할 COC 열만 계산
-    visible_coc_indexes = []
-    for i in range(1, 11):
-        has_data = any(
-            str(v.get(f"coc_type_{i}", "")).strip()
-            or str(v.get(f"coc_summary_{i}", "")).strip()
-            or str(v.get(f"coc_due_date_{i}", "")).strip()
-            for v in vessels_with_coc
-        )
-        if has_data:
-            visible_coc_indexes.append(i)
+    report_rows = []
+    coc_vessel_names = set()
+
+    for vessel in vessels:
+        has_coc = False
+
+        for i in range(1, 11):
+            coc_type = (vessel.get(f'coc_type_{i}') or '').strip()
+            coc_summary = (vessel.get(f'coc_summary_{i}') or '').strip()
+            coc_due_date = (vessel.get(f'coc_due_date_{i}') or '').strip()
+
+            if coc_type or coc_summary or coc_due_date:
+                has_coc = True
+                report_rows.append({
+                    'name': vessel.get('name', ''),
+                    'vessel_type': vessel.get('vessel_type', ''),
+                    'management_company': vessel.get('management_company', ''),
+                    'owner_supervisor': vessel.get('owner_supervisor', ''),
+                    'coc_no': i,
+                    'coc_type': coc_type,
+                    'coc_summary': coc_summary,
+                    'coc_due_date': coc_due_date,
+                })
+
+        if has_coc:
+            coc_vessel_names.add(vessel.get('name', ''))
 
     return render_template(
-        "coc_report.html",
-        version=get_version(),
-        vessels=vessels_with_coc,  # 🔥 여기 변경됨
-        total_count=len(vessels),  # 🔥 여기 변경됨
-        loading_count=sum(
-            1 for v in vessels_with_coc
-            if v.get("vessel_type") == "Tanker" and v.get("cargo_status") == "Loading"
-        ),
-        ballast_count=sum(
-            1 for v in vessels_with_coc
-            if v.get("vessel_type") == "Tanker" and v.get("cargo_status") == "Ballast"
-        ),
-        container_count=sum(
-            1 for v in vessels_with_coc
-            if v.get("vessel_type") == "Container"
-        ),
-        visible_coc_indexes=visible_coc_indexes,
+        'coc_report.html',
+        version=app.config.get('VERSION', '1'),
+        total_count=len(vessels),
+        coc_count=len(coc_vessel_names),
+        report_rows=report_rows,
     )
+
 
 @app.route("/sire-report")
 def sire_report_page():
