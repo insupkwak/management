@@ -1333,6 +1333,7 @@ function focusVesselFromSearch(index) {
   renderList();
   renderMap(false);
 
+  fillFormByVessel(index);   // 추가
   map.setView([vessel.latitude, vessel.longitude], 5.5);
   labelMode = 'one';
   activeLabelIndex = index;
