@@ -71,7 +71,17 @@ let uploadTargetIndex = null;
 let uploadTargetReportKey = null;
 let isLoading = false;
 
-const REPORT_KEYS = ['report1_file', 'report2_file', 'report3_file', 'report4_file', 'report5_file', 'report6_file', 'report6_file'];
+const REPORT_KEYS = [
+  'report1_file',
+  'report2_file',
+  'report3_file',
+  'report4_file',
+  'report5_file',
+  'report6_file',
+  'report7_file',
+  'report8_file'
+];
+
 
 const shipSvg = (color) => `
   <div class="ship-icon">
@@ -543,9 +553,10 @@ function makeReportsBlock(index, vessel) {
       ${makeSingleReportRow(index, vessel, 'report2_file', 'Survey Status')}
       ${makeSingleReportRow(index, vessel, 'report3_file', 'Condition Report')}
       ${makeSingleReportRow(index, vessel, 'report4_file', 'TSI Report')}
-      ${makeSingleReportRow(index, vessel, 'report5_file', 'Q88')}
+      ${makeSingleReportRow(index, vessel, 'report5_file', 'Q88 / Particular')}
       ${makeSingleReportRow(index, vessel, 'report6_file', 'Sire Report')}
       ${makeSingleReportRow(index, vessel, 'report7_file', 'SMA')}
+      ${makeSingleReportRow(index, vessel, 'report8_file', '조직도')}
     </div>
   `;
 }
@@ -766,7 +777,7 @@ async function loadData(options = {}) {
         cargo_status: v.vessel_type === 'Container' ? '' : normalizeCargoStatus(v.cargo_status)
       };
 
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 8; i++) {
         normalized[`report${i}_file`] = normalized[`report${i}_file`] || '';
       }
 

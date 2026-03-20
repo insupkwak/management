@@ -39,6 +39,7 @@ VALID_REPORT_KEYS = {
     "report5_file",
     "report6_file",
     "report7_file",
+    "report8_file",
 }
 
 OWNER_SUPERVISORS = {"손유석 감독", "김흥민 감독", "이창주 감독"}
