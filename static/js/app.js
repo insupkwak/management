@@ -554,7 +554,7 @@ function makeReportsBlock(index, vessel) {
       ${makeSingleReportRow(index, vessel, 'report3_file', 'Condition Report')}
       ${makeSingleReportRow(index, vessel, 'report4_file', 'TSI Report')}
       ${makeSingleReportRow(index, vessel, 'report5_file', 'Q88 / Particular')}
-      ${makeSingleReportRow(index, vessel, 'report6_file', 'Sire Report')}
+      ${makeSingleReportRow(index, vessel, 'report6_file', 'Sire / PSC Report')}
       ${makeSingleReportRow(index, vessel, 'report7_file', 'SMA')}
       ${makeSingleReportRow(index, vessel, 'report8_file', '조직도')}
     </div>
