@@ -87,6 +87,7 @@ def ensure_vessel_columns(conn: sqlite3.Connection) -> None:
         ("vessel_type", "TEXT NOT NULL DEFAULT 'Tanker'"),
         ("management_company", "TEXT NOT NULL DEFAULT ''"),
         ("management_supervisor", "TEXT NOT NULL DEFAULT ''"),
+        ("operation_manager", "TEXT NOT NULL DEFAULT ''"),
         ("owner_supervisor", "TEXT NOT NULL DEFAULT ''"),
         ("builder", "TEXT NOT NULL DEFAULT ''"),
         ("size", "TEXT NOT NULL DEFAULT ''"),
@@ -521,6 +522,7 @@ def build_report_flags(vessels: list[dict[str, Any]]) -> dict[str, bool]:
 
     flags: dict[str, bool] = {
         "show_management_company": has_any_value("management_company"),
+        "show_operation_manager": has_any_value("operation_manager"),
         "show_owner_supervisor": has_any_value("owner_supervisor"),
         "show_vessel_type": has_any_value("vessel_type"),
         "show_delivery_date": has_any_value("delivery_date"),
@@ -638,6 +640,7 @@ def api_save_single_vessel():
     vessel_type = normalize_vessel_type(payload.get("vesselType"))
     management_company = str(payload.get("managementCompany", "")).strip()
     management_supervisor = str(payload.get("managementSupervisor", "")).strip()
+    operation_manager = str(payload.get("operationManager", "")).strip()
 
     owner_supervisor = str(payload.get("ownerSupervisor", "")).strip()
     if owner_supervisor and owner_supervisor not in OWNER_SUPERVISORS:
@@ -661,6 +664,7 @@ def api_save_single_vessel():
         "vessel_type": vessel_type,
         "management_company": management_company,
         "management_supervisor": management_supervisor,
+        "operation_manager": operation_manager,
         "owner_supervisor": owner_supervisor,
         "builder": builder,
         "size": size,

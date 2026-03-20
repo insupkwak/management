@@ -565,6 +565,7 @@ function makeLabelHtml(vessel, index) {
       <div class="label-section">
         ${makeOptionalLine('관리사', vessel.management_company)}
         ${makeOptionalLine('관리사감독', vessel.management_supervisor)}
+        ${makeOptionalLine('운항담당자', vessel.operation_manager)}
         ${makeOptionalLine('선주감독', vessel.owner_supervisor)}
         ${makeOptionalLine('Type', type)}
         ${makeOptionalLine('Size', vessel.size)}
@@ -1268,6 +1269,7 @@ function resetForm() {
   document.getElementById('vesselType').value = 'Tanker';
   document.getElementById('cargoStatus').value = 'Loading';
   document.getElementById('size').value = '';
+  document.getElementById('operationManager').value = '';
   document.getElementById('latitude').value = '';
   document.getElementById('longitude').value = '';
 
@@ -1507,6 +1509,7 @@ if (form) {
       vesselType: currentVesselType,
       managementCompany: document.getElementById('managementCompany').value.trim(),
       managementSupervisor: document.getElementById('managementSupervisor').value.trim(),
+      operationManager: document.getElementById('operationManager').value.trim(),
       ownerSupervisor: document.getElementById('ownerSupervisor').value,
       builder: document.getElementById('builder').value.trim(),
       size: document.getElementById('size').value.trim(),
@@ -1631,6 +1634,7 @@ function fillFormByVessel(index) {
   document.getElementById('vesselType').value = normalizeVesselType(vessel.vessel_type);
   document.getElementById('managementCompany').value = vessel.management_company || '';
   document.getElementById('managementSupervisor').value = vessel.management_supervisor || '';
+  document.getElementById('operationManager').value = vessel.operation_manager || '';
   document.getElementById('ownerSupervisor').value = vessel.owner_supervisor || '';
   document.getElementById('builder').value = vessel.builder || '';
   document.getElementById('size').value = vessel.size || '';
