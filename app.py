@@ -83,6 +83,7 @@ def column_exists(conn: sqlite3.Connection, table_name: str, column_name: str) -
     rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
     return any(row[1] == column_name for row in rows)
 
+
 def ensure_vessel_columns(conn: sqlite3.Connection) -> None:
     required_columns = [
         ("vessel_type", "TEXT NOT NULL DEFAULT 'Tanker'"),
@@ -125,6 +126,7 @@ def ensure_vessel_columns(conn: sqlite3.Connection) -> None:
     for col_name, col_def in required_columns:
         if not column_exists(conn, "vessels", col_name):
             conn.execute(f"ALTER TABLE vessels ADD COLUMN {col_name} {col_def}")
+
 
 def init_db() -> None:
     ensure_dirs()
@@ -246,6 +248,27 @@ def parse_excel_datetime(value: Any) -> datetime | None:
             return datetime.strptime(text, fmt)
         except Exception:
             continue
+    return None
+
+
+def parse_degree_minute_coordinate(degree: Any, minute: Any, hemisphere: Any, coord_type: str) -> float | None:
+    deg = safe_float(degree)
+    minute_val = safe_float(minute)
+    hemi = str(hemisphere or "").strip().upper()
+
+    if deg is None or minute_val is None or hemi not in {"N", "S", "E", "W"}:
+        return None
+
+    value = abs(deg) + (minute_val / 60.0)
+
+    if hemi in {"S", "W"}:
+        value = -value
+
+    if coord_type == "lat" and -90 <= value <= 90:
+        return round(value, 6)
+    if coord_type == "lon" and -180 <= value <= 180:
+        return round(value, 6)
+
     return None
 
 
@@ -380,111 +403,219 @@ def find_header_index(headers: list[Any], candidates: list[str]) -> int | None:
     return None
 
 
+def is_new_position_format(headers: list[Any]) -> bool:
+    def cell(idx: int) -> str:
+        if idx >= len(headers):
+            return ""
+        return str(headers[idx] or "").strip().lower()
+
+    return (
+        cell(3) == "name"
+        and cell(8) == "date(lt)"
+        and cell(17) == "latitude"
+        and cell(18) == "latitude"
+        and cell(19) == "latitude"
+        and cell(20) == "longitude"
+        and cell(21) == "longitude"
+        and cell(22) == "longitude"
+    )
+
+
+
+
 def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]:
     rows = list(ws.iter_rows(values_only=True))
     if not rows:
         return {}, 0, 0
 
-    headers = list(rows[0])
+    def parse_with_header_row(header_row_index: int) -> tuple[dict[str, dict[str, Any]], int, int]:
+        if len(rows) <= header_row_index:
+            return {}, 0, 0
 
-    name_idx = find_header_index(headers, [
-        "선명", "선박명", "ship name", "shipname", "vesselname", "vessel", "name"
-    ])
-    date_idx = find_header_index(headers, [
-        "date", "일자", "날짜", "시간", "datetime", "updatedate", "updatetime"
-    ])
-    lat_idx = find_header_index(headers, [
-        "latitude", "lat", "위도"
-    ])
-    lon_idx = find_header_index(headers, [
-        "longitude", "lon", "lng", "경도"
-    ])
-    position_idx = find_header_index(headers, [
-        "위치", "position", "pos", "location"
-    ])
+        headers = list(rows[header_row_index])
+        data_rows = rows[header_row_index + 1:]
 
-    if name_idx is None:
-        raise ValueError("엑셀 헤더에서 선명 또는 선박명을 찾을 수 없습니다.")
+        # -------------------------------
+        # 새 양식
+        # 2행 헤더형식도 가능, 1행 헤더형식도 가능하게
+        # -------------------------------
+        if is_new_position_format(headers):
+            latest_by_name: dict[str, dict[str, Any]] = {}
+            total_rows = 0
+            invalid_count = 0
 
-    if lat_idx is None and lon_idx is None and position_idx is None:
-        raise ValueError("엑셀 헤더에서 위도/경도 또는 위치 컬럼을 찾을 수 없습니다.")
+            for row in data_rows:
+                if not row:
+                    continue
 
-    latest_by_name: dict[str, dict[str, Any]] = {}
-    total_rows = 0
-    invalid_count = 0
+                total_rows += 1
 
-    for row in rows[1:]:
-        if not row:
-            continue
+                raw_name = row[3] if len(row) > 3 else None   # D
+                name = str(raw_name or "").strip()
+                if not name:
+                    invalid_count += 1
+                    continue
 
-        total_rows += 1
+                dt_value = parse_excel_datetime(row[8] if len(row) > 8 else None)   # I
 
-        raw_name = row[name_idx] if name_idx < len(row) else None
-        name = str(raw_name or "").strip()
-        if not name:
-            invalid_count += 1
-            continue
+                lat = parse_degree_minute_coordinate(
+                    row[17] if len(row) > 17 else None,   # R
+                    row[18] if len(row) > 18 else None,   # S
+                    row[19] if len(row) > 19 else None,   # T
+                    "lat",
+                )
 
-        dt_value = None
-        if date_idx is not None and date_idx < len(row):
-            dt_value = parse_excel_datetime(row[date_idx])
+                lon = parse_degree_minute_coordinate(
+                    row[20] if len(row) > 20 else None,   # U
+                    row[21] if len(row) > 21 else None,   # V
+                    row[22] if len(row) > 22 else None,   # W
+                    "lon",
+                )
 
-        lat = None
-        lon = None
+                if lat is None or lon is None:
+                    invalid_count += 1
+                    continue
 
-        if position_idx is not None and position_idx < len(row):
-            position_raw = row[position_idx]
-            if position_raw not in (None, ""):
-                lat, lon = extract_lat_lon_from_combined_text(str(position_raw))
+                key = normalize_name(name)
+                current = latest_by_name.get(key)
 
-        if lat is None and lat_idx is not None and lat_idx < len(row):
-            lat = parse_coordinate(row[lat_idx], "lat")
+                item = {
+                    "name": name,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "dt": dt_value,
+                }
 
-        if lon is None and lon_idx is not None and lon_idx < len(row):
-            lon = parse_coordinate(row[lon_idx], "lon")
+                if current is None:
+                    latest_by_name[key] = item
+                    continue
 
-        if (lat is None or lon is None) and lat_idx is not None and lat_idx < len(row):
-            extra_lat, extra_lon = extract_lat_lon_from_combined_text(str(row[lat_idx] or ""))
-            if lat is None and extra_lat is not None:
-                lat = extra_lat
-            if lon is None and extra_lon is not None:
-                lon = extra_lon
+                current_dt = current.get("dt")
+                if dt_value and current_dt:
+                    if dt_value >= current_dt:
+                        latest_by_name[key] = item
+                elif dt_value and not current_dt:
+                    latest_by_name[key] = item
+                elif not dt_value and not current_dt:
+                    latest_by_name[key] = item
 
-        if (lat is None or lon is None) and lon_idx is not None and lon_idx < len(row):
-            extra_lat, extra_lon = extract_lat_lon_from_combined_text(str(row[lon_idx] or ""))
-            if lat is None and extra_lat is not None:
-                lat = extra_lat
-            if lon is None and extra_lon is not None:
-                lon = extra_lon
+            return latest_by_name, total_rows, invalid_count
 
-        if lat is None or lon is None:
-            invalid_count += 1
-            continue
+        # -------------------------------
+        # 기존 양식
+        # -------------------------------
+        name_idx = find_header_index(headers, [
+            "선명", "선박명", "ship name", "shipname", "vesselname", "vessel", "name"
+        ])
+        date_idx = find_header_index(headers, [
+            "date", "일자", "날짜", "시간", "datetime", "updatedate", "updatetime"
+        ])
+        lat_idx = find_header_index(headers, [
+            "latitude", "lat", "위도"
+        ])
+        lon_idx = find_header_index(headers, [
+            "longitude", "lon", "lng", "경도"
+        ])
+        position_idx = find_header_index(headers, [
+            "위치", "position", "pos", "location"
+        ])
 
-        key = normalize_name(name)
-        current = latest_by_name.get(key)
+        if name_idx is None:
+            raise ValueError("엑셀 헤더에서 선명 또는 선박명을 찾을 수 없습니다.")
 
-        item = {
-            "name": name,
-            "latitude": lat,
-            "longitude": lon,
-            "dt": dt_value,
-        }
+        if lat_idx is None and lon_idx is None and position_idx is None:
+            raise ValueError("엑셀 헤더에서 위도/경도 또는 위치 컬럼을 찾을 수 없습니다.")
 
-        if current is None:
-            latest_by_name[key] = item
-            continue
+        latest_by_name: dict[str, dict[str, Any]] = {}
+        total_rows = 0
+        invalid_count = 0
 
-        current_dt = current.get("dt")
-        if dt_value and current_dt:
-            if dt_value >= current_dt:
+        for row in data_rows:
+            if not row:
+                continue
+
+            total_rows += 1
+
+            raw_name = row[name_idx] if name_idx < len(row) else None
+            name = str(raw_name or "").strip()
+            if not name:
+                invalid_count += 1
+                continue
+
+            dt_value = None
+            if date_idx is not None and date_idx < len(row):
+                dt_value = parse_excel_datetime(row[date_idx])
+
+            lat = None
+            lon = None
+
+            if position_idx is not None and position_idx < len(row):
+                position_raw = row[position_idx]
+                if position_raw not in (None, ""):
+                    lat, lon = extract_lat_lon_from_combined_text(str(position_raw))
+
+            if lat is None and lat_idx is not None and lat_idx < len(row):
+                lat = parse_coordinate(row[lat_idx], "lat")
+
+            if lon is None and lon_idx is not None and lon_idx < len(row):
+                lon = parse_coordinate(row[lon_idx], "lon")
+
+            if (lat is None or lon is None) and lat_idx is not None and lat_idx < len(row):
+                extra_lat, extra_lon = extract_lat_lon_from_combined_text(str(row[lat_idx] or ""))
+                if lat is None and extra_lat is not None:
+                    lat = extra_lat
+                if lon is None and extra_lon is not None:
+                    lon = extra_lon
+
+            if (lat is None or lon is None) and lon_idx is not None and lon_idx < len(row):
+                extra_lat, extra_lon = extract_lat_lon_from_combined_text(str(row[lon_idx] or ""))
+                if lat is None and extra_lat is not None:
+                    lat = extra_lat
+                if lon is None and extra_lon is not None:
+                    lon = extra_lon
+
+            if lat is None or lon is None:
+                invalid_count += 1
+                continue
+
+            key = normalize_name(name)
+            current = latest_by_name.get(key)
+
+            item = {
+                "name": name,
+                "latitude": lat,
+                "longitude": lon,
+                "dt": dt_value,
+            }
+
+            if current is None:
                 latest_by_name[key] = item
-        elif dt_value and not current_dt:
-            latest_by_name[key] = item
-        elif not dt_value and not current_dt:
-            latest_by_name[key] = item
+                continue
 
-    return latest_by_name, total_rows, invalid_count
+            current_dt = current.get("dt")
+            if dt_value and current_dt:
+                if dt_value >= current_dt:
+                    latest_by_name[key] = item
+            elif dt_value and not current_dt:
+                latest_by_name[key] = item
+            elif not dt_value and not current_dt:
+                latest_by_name[key] = item
+
+        return latest_by_name, total_rows, invalid_count
+
+    # 1순위: 2행 헤더 시도
+    try:
+        result = parse_with_header_row(1)
+        parsed_map, total_rows, invalid_count = result
+        if parsed_map or total_rows > 0:
+            return result
+    except ValueError:
+        pass
+
+    # 2순위: 1행 헤더 시도
+    return parse_with_header_row(0)
+
+
 
 
 def get_all_vessels() -> list[dict[str, Any]]:
@@ -514,7 +645,6 @@ def remove_old_report_file_if_needed(vessel: dict[str, Any], report_key: str) ->
             old_path.unlink()
         except Exception:
             pass
-
 
 
 def build_report_flags(vessels: list[dict[str, Any]]) -> dict[str, bool]:
@@ -563,7 +693,6 @@ def build_report_flags(vessels: list[dict[str, Any]]) -> dict[str, bool]:
     return flags
 
 
-
 @app.after_request
 def add_no_cache_headers(response):
     if request.path.startswith("/api/"):
@@ -578,7 +707,7 @@ def index():
     return render_template("index.html", version=get_version())
 
 
-@app.route('/report')
+@app.route("/report")
 def report_page():
     conn = get_db()
     conn.row_factory = sqlite3.Row
@@ -592,30 +721,30 @@ def report_page():
         vessel_has_critical = False
 
         for i in range(1, 16):
-            issue_text = (vessel.get(f'issue_{i}') or '').strip()
-            issue_critical = int(vessel.get(f'issue_{i}_critical') or 0)
+            issue_text = (vessel.get(f"issue_{i}") or "").strip()
+            issue_critical = int(vessel.get(f"issue_{i}_critical") or 0)
 
             if issue_text:
                 report_rows.append({
-                    'name': vessel.get('name', ''),
-                    'vessel_type': vessel.get('vessel_type', ''),
-                    'management_company': vessel.get('management_company', ''),
-                    'owner_supervisor': vessel.get('owner_supervisor', ''),
-                    'voyage_plan': vessel.get('voyage_plan', ''),
-                    'issue_no': i,
-                    'issue_text': issue_text,
-                    'issue_critical': issue_critical,
+                    "name": vessel.get("name", ""),
+                    "vessel_type": vessel.get("vessel_type", ""),
+                    "management_company": vessel.get("management_company", ""),
+                    "owner_supervisor": vessel.get("owner_supervisor", ""),
+                    "voyage_plan": vessel.get("voyage_plan", ""),
+                    "issue_no": i,
+                    "issue_text": issue_text,
+                    "issue_critical": issue_critical,
                 })
 
                 if issue_critical == 1:
                     vessel_has_critical = True
 
         if vessel_has_critical:
-            critical_vessel_names.add(vessel.get('name', ''))
+            critical_vessel_names.add(vessel.get("name", ""))
 
     return render_template(
-        'report.html',
-        version=app.config.get('VERSION', '1'),
+        "report.html",
+        version=app.config.get("VERSION", "1"),
         total_count=len(vessels),
         critical_vessel_count=len(critical_vessel_names),
         report_rows=report_rows,
@@ -625,7 +754,6 @@ def report_page():
 @app.route("/api/vessels", methods=["GET"])
 def api_get_vessels():
     return no_cache_json(get_all_vessels())
-
 
 
 @app.route("/api/vessel", methods=["POST"])
@@ -748,9 +876,6 @@ def api_save_single_vessel():
     return no_cache_json({"success": True, "message": "저장되었습니다."})
 
 
-
-
-
 @app.route("/api/vessel/delete", methods=["POST"])
 def api_delete_single_vessel():
     payload = request.get_json(silent=True) or {}
@@ -832,9 +957,7 @@ def api_upload_report():
     })
 
 
-
-
-@app.route('/coc-report')
+@app.route("/coc-report")
 def coc_report():
     conn = get_db()
     conn.row_factory = sqlite3.Row
@@ -848,29 +971,29 @@ def coc_report():
         has_coc = False
 
         for i in range(1, 11):
-            coc_type = (vessel.get(f'coc_type_{i}') or '').strip()
-            coc_summary = (vessel.get(f'coc_summary_{i}') or '').strip()
-            coc_due_date = (vessel.get(f'coc_due_date_{i}') or '').strip()
+            coc_type = (vessel.get(f"coc_type_{i}") or "").strip()
+            coc_summary = (vessel.get(f"coc_summary_{i}") or "").strip()
+            coc_due_date = (vessel.get(f"coc_due_date_{i}") or "").strip()
 
             if coc_type or coc_summary or coc_due_date:
                 has_coc = True
                 report_rows.append({
-                    'name': vessel.get('name', ''),
-                    'vessel_type': vessel.get('vessel_type', ''),
-                    'management_company': vessel.get('management_company', ''),
-                    'owner_supervisor': vessel.get('owner_supervisor', ''),
-                    'coc_no': i,
-                    'coc_type': coc_type,
-                    'coc_summary': coc_summary,
-                    'coc_due_date': coc_due_date,
+                    "name": vessel.get("name", ""),
+                    "vessel_type": vessel.get("vessel_type", ""),
+                    "management_company": vessel.get("management_company", ""),
+                    "owner_supervisor": vessel.get("owner_supervisor", ""),
+                    "coc_no": i,
+                    "coc_type": coc_type,
+                    "coc_summary": coc_summary,
+                    "coc_due_date": coc_due_date,
                 })
 
         if has_coc:
-            coc_vessel_names.add(vessel.get('name', ''))
+            coc_vessel_names.add(vessel.get("name", ""))
 
     return render_template(
-        'coc_report.html',
-        version=app.config.get('VERSION', '1'),
+        "coc_report.html",
+        version=app.config.get("VERSION", "1"),
         total_count=len(vessels),
         coc_count=len(coc_vessel_names),
         report_rows=report_rows,
@@ -881,7 +1004,6 @@ def coc_report():
 def sire_report_page():
     vessels = get_all_vessels()
 
-    # 1. SIRE 데이터가 하나라도 있는 선박만
     vessels_with_sire = [
         v for v in vessels
         if any(
@@ -894,7 +1016,6 @@ def sire_report_page():
         )
     ]
 
-    # 2. 실제 데이터가 있는 SIRE 열만 표시
     visible_sire_indexes = []
     for i in range(1, 4):
         has_data = any(
@@ -908,7 +1029,6 @@ def sire_report_page():
         if has_data:
             visible_sire_indexes.append(i)
 
-    # 3. SIRE 진행중 선박 수
     sire_progress_count = sum(
         1 for v in vessels_with_sire
         if any(
@@ -921,12 +1041,11 @@ def sire_report_page():
         "sire_report.html",
         version=get_version(),
         vessels=vessels_with_sire,
-        total_count=len(vessels),  # 전체 등록 선박
-        sire_vessel_count=len(vessels_with_sire),  # SIRE 데이터 보유 선박
+        total_count=len(vessels),
+        sire_vessel_count=len(vessels_with_sire),
         sire_progress_count=sire_progress_count,
         visible_sire_indexes=visible_sire_indexes,
     )
-
 
 
 @app.route("/condition-report")
@@ -956,7 +1075,6 @@ def condition_report_page():
         condition_report_count=condition_report_count,
         condition_progress_count=condition_progress_count,
     )
-
 
 
 @app.route("/api/upload-positions", methods=["POST"])
