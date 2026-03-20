@@ -53,6 +53,15 @@
             <option value="이창주 감독">이창주 감독</option>
           </select>
 
+            <label for="teamName">담당팀</label>
+            <select id="teamName">
+              <option value="">선택</option>
+              <option value="TRMT1">TRMT1</option>
+              <option value="TRMT2">TRMT2</option>
+              <option value="TRMT3 & CMT2">TRMT3 & CMT2</option>
+            </select>
+
+
           <label for="builder">Builder</label>
           <input id="builder" type="text" />
 
@@ -423,25 +432,35 @@
           <span class="toolbar-chip-value" id="countAll">0척</span>
         </button>
 
-        <button type="button" id="filterLoadingBtn" class="toolbar-chip-btn">
-          <span class="toolbar-chip-label">Loading</span>
-          <span class="toolbar-chip-value" id="countLoading">0척</span>
-        </button>
+
+<button type="button" id="filterLoadingBtn" class="toolbar-chip-btn">
+  <span class="toolbar-chip-label">Tanker</span>
+  <span class="toolbar-chip-value" id="countLoading">0척</span>
+</button>
+
+
 
         <button type="button" id="filterBallastBtn" class="toolbar-chip-btn">
-          <span class="toolbar-chip-label">Ballast</span>
-          <span class="toolbar-chip-value" id="countBallast">0척</span>
-        </button>
+  <span class="toolbar-chip-label">VLCC</span>
+  <span class="toolbar-chip-value" id="countBallast">0척</span>
+</button>
 
-        <button type="button" id="filterContainerBtn" class="toolbar-chip-btn">
-          <span class="toolbar-chip-label">Container</span>
-          <span class="toolbar-chip-value" id="countContainer">0척</span>
-        </button>
+
 
         <button type="button" id="filterSireProgressBtn" class="toolbar-chip-btn">
           <span class="toolbar-chip-label">Sire 결함조치 중</span>
           <span class="toolbar-chip-value" id="countSireProgress">0척</span>
         </button>
+
+
+<button type="button" id="filterContainerBtn" class="toolbar-chip-btn">
+  <span class="toolbar-chip-label">CMT2</span>
+  <span class="toolbar-chip-value" id="countContainer">0척</span>
+</button>
+
+
+
+
 
         <button type="button" id="filterDryDockDueBtn" class="toolbar-chip-btn">
           <span class="toolbar-chip-label">입거 6개월내</span>

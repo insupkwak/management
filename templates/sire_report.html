@@ -20,18 +20,18 @@
       </div>
     </div>
 
-    <div class="report-summary-grid report-summary-grid-wide">
+    <div class="report-summary-grid">
       <div class="report-summary-card report-summary-card-main">
-        <div class="label">Total 선박</div>
+        <div class="label">전체 선박</div>
         <div class="value">{{ total_count }}</div>
       </div>
 
-      <div class="report-summary-card info">
+      <div class="report-summary-card">
         <div class="label">SIRE 보유 선박</div>
         <div class="value">{{ sire_vessel_count }}</div>
       </div>
 
-      <div class="report-summary-card warning">
+      <div class="report-summary-card report-summary-card-warn">
         <div class="label">Sire 진행중 선박</div>
         <div class="value">{{ sire_progress_count }}</div>
       </div>
@@ -46,34 +46,36 @@
             <th>관리사</th>
             <th>선주감독</th>
             <th>Cargo</th>
-
-            {% for i in visible_sire_indexes %}
-            <th>Sire {{ i }} 종류</th>
-            <th>Sire {{ i }} 날짜</th>
-            <th>Sire {{ i }} 상태</th>
-            <th>Sire {{ i }} 지적사항</th>
-            <th>Sire {{ i }} 잔여지적</th>
-            {% endfor %}
+            <th>No.</th>
+            <th>Sire 종류</th>
+            <th>Sire 날짜</th>
+            <th>Sire 상태</th>
+            <th>Sire 지적사항</th>
+            <th>Sire 잔여지적</th>
           </tr>
         </thead>
         <tbody>
-          {% for vessel in vessels %}
-          <tr>
-            <td class="left strong">{{ vessel.name }}</td>
-            <td>{{ vessel.vessel_type or '' }}</td>
-            <td class="left">{{ vessel.management_company or '' }}</td>
-            <td>{{ vessel.owner_supervisor or '' }}</td>
-            <td>{{ vessel.cargo_status or '' }}</td>
-
-            {% for i in visible_sire_indexes %}
-            <td class="left">{{ vessel['sire_type_' ~ i] or '' }}</td>
-            <td>{{ vessel['sire_date_' ~ i] or '' }}</td>
-            <td>{{ vessel['sire_status_' ~ i] or '' }}</td>
-            <td>{{ vessel['sire_findings_' ~ i] or '' }}</td>
-            <td>{{ vessel['sire_open_findings_' ~ i] or '' }}</td>
+          {% if report_rows %}
+            {% for row in report_rows %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.vessel_type }}</td>
+              <td>{{ row.management_company }}</td>
+              <td>{{ row.owner_supervisor }}</td>
+              <td>{{ row.cargo_status }}</td>
+              <td>{{ row.sire_no }}</td>
+              <td>{{ row.sire_type }}</td>
+              <td>{{ row.sire_date }}</td>
+              <td>{{ row.sire_status }}</td>
+              <td>{{ row.sire_findings }}</td>
+              <td>{{ row.sire_open_findings }}</td>
+            </tr>
             {% endfor %}
-          </tr>
-          {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="11" style="text-align:center;">데이터가 없습니다.</td>
+            </tr>
+          {% endif %}
         </tbody>
       </table>
     </div>

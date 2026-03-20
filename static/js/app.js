@@ -472,16 +472,18 @@ function highlightListCargoStatus(value) {
 
 function getFilteredVessels() {
   if (currentFilter === 'loading') {
-    return vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Tanker' && normalizeCargoStatus(v.cargo_status) === 'Loading');
+    return vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Tanker');
   }
 
   if (currentFilter === 'ballast') {
-    return vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Tanker' && normalizeCargoStatus(v.cargo_status) === 'Ballast');
+    return vessels.filter(v => String(v.size || '').trim().toUpperCase() === 'VLCC');
   }
 
   if (currentFilter === 'container') {
-    return vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Container');
+    return vessels.filter(v => String(v.team_name || v.teamName || '').trim() === 'TRMT3 & CMT2');
   }
+
+
 
   if (currentFilter === 'sireprogress') {
     return vessels.filter(v => hasSireInProgress(v));
@@ -578,6 +580,7 @@ function makeLabelHtml(vessel, index) {
         ${makeOptionalLine('관리사감독', vessel.management_supervisor)}
         ${makeOptionalLine('운항담당자', vessel.operation_manager)}
         ${makeOptionalLine('선주감독', vessel.owner_supervisor)}
+        ${makeOptionalLine('담당팀', vessel.team_name || vessel.teamName)}
         ${makeOptionalLine('Type', type)}
         ${makeOptionalLine('Size', vessel.size)}
         ${makeOptionalLine('Builder', vessel.builder)}
@@ -688,15 +691,21 @@ function updateStatusBoard() {
   }
 
   if (countLoading) {
-    countLoading.textContent = `${vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Tanker' && normalizeCargoStatus(v.cargo_status) === 'Loading').length}척`;
+    countLoading.textContent = `${vessels.filter(v =>
+      normalizeVesselType(v.vessel_type) === 'Tanker'
+    ).length}척`;
   }
 
   if (countBallast) {
-    countBallast.textContent = `${vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Tanker' && normalizeCargoStatus(v.cargo_status) === 'Ballast').length}척`;
+    countBallast.textContent = `${vessels.filter(v =>
+      String(v.size || '').trim().toUpperCase() === 'VLCC'
+    ).length}척`;
   }
 
   if (countContainer) {
-    countContainer.textContent = `${vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Container').length}척`;
+    countContainer.textContent = `${vessels.filter(v =>
+      String(v.team_name || v.teamName || '').trim() === 'TRMT3 & CMT2'
+    ).length}척`;
   }
 
   if (countSireProgress) {
@@ -729,7 +738,6 @@ function updateStatusBoard() {
 
   updateToolbarButtons();
 }
-
 
 async function loadData(options = {}) {
   const {
@@ -770,12 +778,13 @@ async function loadData(options = {}) {
     }
 
     vessels = vessels.map(v => {
-      const normalized = {
-        ...v,
-        vessel_type: normalizeVesselType(v.vessel_type || 'Tanker'),
-        voyage_plan: v.voyage_plan || '',
-        cargo_status: v.vessel_type === 'Container' ? '' : normalizeCargoStatus(v.cargo_status)
-      };
+const normalized = {
+  ...v,
+  vessel_type: normalizeVesselType(v.vessel_type || v.vesselType || 'Tanker'),
+  voyage_plan: v.voyage_plan || v.voyagePlan || '',
+  cargo_status: (v.vessel_type || v.vesselType) === 'Container' ? '' : normalizeCargoStatus(v.cargo_status),
+  team_name: v.team_name || v.teamName || ''
+};
 
       for (let i = 1; i <= 8; i++) {
         normalized[`report${i}_file`] = normalized[`report${i}_file`] || '';
@@ -1262,9 +1271,10 @@ function renderList() {
 
     const item = document.createElement('div');
     item.className = 'vessel-item';
-    item.innerHTML = `
-      <strong>${escapeHtml(vessel.name)}</strong>
-      <small>Type: ${escapeHtml(type)}</small>
+item.innerHTML = `
+  <strong>${escapeHtml(vessel.name)}</strong>
+  <small>Type: ${escapeHtml(type)}</small>
+  <small>Team: ${escapeHtml(vessel.team_name || vessel.teamName || '')}</small>
    
       <div class="actions">
         <button onclick="editVessel(${index})">수정</button>
@@ -1281,6 +1291,7 @@ function resetForm() {
   document.getElementById('cargoStatus').value = 'Loading';
   document.getElementById('size').value = '';
   document.getElementById('operationManager').value = '';
+  document.getElementById('teamName').value = '';
   document.getElementById('latitude').value = '';
   document.getElementById('longitude').value = '';
 
@@ -1481,28 +1492,27 @@ if (positionUpdateBtn && positionExcelInput) {
 
 if (issueReportBtn) {
   issueReportBtn.addEventListener('click', () => {
-    window.open(`/report?_=${Date.now()}`, '_blank');
+    window.open(`/report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
 
 if (cocReportBtn) {
   cocReportBtn.addEventListener('click', () => {
-    window.open(`/coc-report?_=${Date.now()}`, '_blank');
+    window.open(`/coc-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
 
 if (sireReportBtn) {
   sireReportBtn.addEventListener('click', () => {
-    window.open(`/sire-report?_=${Date.now()}`, '_blank');
+    window.open(`/sire-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
 
 if (conditionReportBtn) {
   conditionReportBtn.addEventListener('click', () => {
-    window.open(`/condition-report?_=${Date.now()}`, '_blank');
+    window.open(`/condition-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
-
 
 
 if (form) {
@@ -1522,6 +1532,9 @@ if (form) {
       managementSupervisor: document.getElementById('managementSupervisor').value.trim(),
       operationManager: document.getElementById('operationManager').value.trim(),
       ownerSupervisor: document.getElementById('ownerSupervisor').value,
+      
+      teamName: document.getElementById('teamName').value,
+      
       builder: document.getElementById('builder').value.trim(),
       size: document.getElementById('size').value.trim(),
       deliveryDate: document.getElementById('deliveryDate').value,
@@ -1647,6 +1660,7 @@ function fillFormByVessel(index) {
   document.getElementById('managementSupervisor').value = vessel.management_supervisor || '';
   document.getElementById('operationManager').value = vessel.operation_manager || '';
   document.getElementById('ownerSupervisor').value = vessel.owner_supervisor || '';
+  document.getElementById('teamName').value = vessel.team_name || vessel.teamName || '';
   document.getElementById('builder').value = vessel.builder || '';
   document.getElementById('size').value = vessel.size || '';
   setDateInputValue('deliveryDate', vessel.delivery_date || '');
