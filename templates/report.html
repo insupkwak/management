@@ -56,12 +56,13 @@
             <td class="left">{{ row.voyage_plan or '' }}</td>
             <td>{{ row.issue_no }}</td>
             <td class="left">{{ row.issue_text }}</td>
-            <td>
-              {% if row.issue_critical == 1 %}
-                YES
-              {% else %}
-                NO
-              {% endif %}
+<td class="{% if row.issue_critical == 1 %}critical-yes{% endif %}">
+  {% if row.issue_critical == 1 %}
+    YES
+  {% else %}
+    NO
+  {% endif %}
+</td>
             </td>
           </tr>
           {% endfor %}

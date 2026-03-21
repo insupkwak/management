@@ -1189,3 +1189,7 @@ button:hover {
 }
 
 
+.report-table td.critical-yes {
+  color: #dc2626 !important;
+  font-weight: 700 !important;
+}
