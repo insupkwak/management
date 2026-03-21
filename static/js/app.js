@@ -69,7 +69,7 @@ let labelObjects = [];
 
 let labelMode = 'none';
 let activeLabelIndex = null;
-let currentFilter = 'all';
+let currentFilter = 'cmt2';
 let uploadTargetIndex = null;
 let uploadTargetReportKey = null;
 let isLoading = false;
