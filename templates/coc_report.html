@@ -20,17 +20,22 @@
       </div>
     </div>
 
-    <div class="report-summary-grid report-summary-grid-wide">
-      <div class="report-summary-card report-summary-card-main">
-        <div class="label">전체선박</div>
-        <div class="value">{{ total_count }}</div>
-      </div>
+<div class="report-summary-grid report-summary-grid-wide">
+  <div class="report-summary-card report-summary-card-main">
+    <div class="label">전체선박</div>
+    <div class="value">{{ total_count }}</div>
+  </div>
 
-      <div class="report-summary-card info">
-        <div class="label">COC 보유 선박</div>
-        <div class="value">{{ coc_count }}</div>
-      </div>
-    </div>
+  <div class="report-summary-card info">
+    <div class="label">COC 보유선박</div>
+    <div class="value">{{ coc_count }}</div>
+  </div>
+
+  <div class="report-summary-card danger">
+    <div class="label">Due Date 1개월 내</div>
+    <div class="value">{{ due_soon_count }}</div>
+  </div>
+</div>
 
     <div class="report-table-wrap">
       <table class="report-table">
@@ -56,7 +61,9 @@
             <td>{{ row.coc_no }}</td>
             <td class="left">{{ row.coc_type }}</td>
             <td class="left">{{ row.coc_summary }}</td>
-            <td>{{ row.coc_due_date }}</td>
+            <td class="due-date-cell {% if row.is_due_soon %}due-red{% endif %}">
+             {{ row.coc_due_date }}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

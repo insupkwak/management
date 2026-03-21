@@ -725,6 +725,23 @@ def has_any_coc_due(vessel: dict[str, Any]) -> bool:
     return False
 
 
+def is_due_within_1_month(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+
+    try:
+        due = datetime.strptime(text[:10], "%Y-%m-%d")
+    except Exception:
+        return False
+
+    from datetime import timedelta
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    one_month_later = today + timedelta(days=30)
+
+    return today <= due <= one_month_later
+
+
 def has_sire_in_progress(vessel: dict[str, Any]) -> bool:
     for i in range(1, 4):
         if str(vessel.get(f"sire_status_{i}", "")).strip() == "결함조치 중":
@@ -761,17 +778,21 @@ def is_dry_dock_due_within_6_months(value: Any) -> bool:
 def apply_filter_to_vessels(vessels: list[dict[str, Any]], filter_name: str) -> list[dict[str, Any]]:
     filter_name = str(filter_name or "all").strip().lower()
 
-    if filter_name == "loading":
-        return [v for v in vessels if normalize_vessel_type(v.get("vessel_type")) == "Tanker"]
-
-    if filter_name == "ballast":
+    if filter_name == "vlcc":
         return [v for v in vessels if str(v.get("size", "")).strip().upper() == "VLCC"]
-
-    if filter_name == "container":
-        return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT3 & CMT2"]
 
     if filter_name == "sireprogress":
         return [v for v in vessels if has_sire_in_progress(v)]
+
+    if filter_name == "trmt1":
+        return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT1"]
+
+    if filter_name == "trmt2":
+        return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT2"]
+
+    if filter_name == "cmt2":
+        return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT3 & CMT2"]
+
 
     if filter_name == "son":
         return [v for v in vessels if str(v.get("owner_supervisor", "")).strip() == "손유석 감독"]
@@ -782,8 +803,6 @@ def apply_filter_to_vessels(vessels: list[dict[str, Any]], filter_name: str) -> 
     if filter_name == "lee":
         return [v for v in vessels if str(v.get("owner_supervisor", "")).strip() == "이창주 감독"]
 
-    if filter_name == "drydockdue":
-        return [v for v in vessels if is_dry_dock_due_within_6_months(v.get("next_dry_dock", ""))]
 
     if filter_name == "coc":
         return [v for v in vessels if has_any_coc_due(v)]
@@ -875,8 +894,6 @@ def api_save_single_vessel():
     operation_manager = str(payload.get("operationManager", "")).strip()
 
     owner_supervisor = str(payload.get("ownerSupervisor", "")).strip()
-    if owner_supervisor and owner_supervisor not in OWNER_SUPERVISORS:
-        owner_supervisor = ""
 
     team_name = str(payload.get("teamName", "")).strip()
     if team_name and team_name not in VALID_TEAM_NAMES:
@@ -1069,7 +1086,6 @@ def api_upload_report():
     })
 
 
-
 @app.route("/coc-report")
 def coc_report():
     filter_name = request.args.get("filter", "all")
@@ -1079,6 +1095,7 @@ def coc_report():
 
     report_rows = []
     coc_vessel_names = set()
+    due_soon_vessel_names = set()
 
     for vessel in vessels:
         has_coc = False
@@ -1090,6 +1107,11 @@ def coc_report():
 
             if coc_type or coc_summary or coc_due_date:
                 has_coc = True
+
+                due_soon = is_due_within_1_month(coc_due_date)
+                if due_soon:
+                    due_soon_vessel_names.add(vessel.get("name", ""))
+
                 report_rows.append({
                     "name": vessel.get("name", ""),
                     "vessel_type": vessel.get("vessel_type", ""),
@@ -1100,6 +1122,7 @@ def coc_report():
                     "coc_type": coc_type,
                     "coc_summary": coc_summary,
                     "coc_due_date": coc_due_date,
+                    "is_due_soon": due_soon,
                 })
 
         if has_coc:
@@ -1110,10 +1133,10 @@ def coc_report():
         version=get_version(),
         total_count=len(vessels),
         coc_count=len(coc_vessel_names),
+        due_soon_count=len(due_soon_vessel_names),
         report_rows=report_rows,
         current_filter=filter_name,
     )
-
 
 @app.route("/sire-report")
 def sire_report_page():

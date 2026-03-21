@@ -24,14 +24,17 @@ const conditionReportBtn = document.getElementById('conditionReportBtn');
 
 const toggleAllLabelsBtn = document.getElementById('toggleAllLabelsBtn');
 const filterAllBtn = document.getElementById('filterAllBtn');
-const filterLoadingBtn = document.getElementById('filterLoadingBtn');
-const filterBallastBtn = document.getElementById('filterBallastBtn');
-const filterContainerBtn = document.getElementById('filterContainerBtn');
+
+
+
+const filterVlccBtn = document.getElementById('filterVlccBtn');
 const filterSireProgressBtn = document.getElementById('filterSireProgressBtn');
+const filterTrmt1Btn = document.getElementById('filterTrmt1Btn');
+const filterTrmt2Btn = document.getElementById('filterTrmt2Btn');
+const filterCmt2Btn = document.getElementById('filterCmt2Btn');
 const filterSonBtn = document.getElementById('filterSonBtn');
 const filterKimBtn = document.getElementById('filterKimBtn');
 const filterLeeBtn = document.getElementById('filterLeeBtn');
-const filterDryDockDueBtn = document.getElementById('filterDryDockDueBtn');
 const filterCocBtn = document.getElementById('filterCocBtn');
 const filterCriticalBtn = document.getElementById('filterCriticalBtn');
 
@@ -39,14 +42,14 @@ const shipSearchInput = document.getElementById('shipSearchInput');
 const shipSearchDropdown = document.getElementById('shipSearchDropdown');
 
 const countAll = document.getElementById('countAll');
-const countLoading = document.getElementById('countLoading');
-const countBallast = document.getElementById('countBallast');
-const countContainer = document.getElementById('countContainer');
+const countVlcc = document.getElementById('countVlcc');
 const countSireProgress = document.getElementById('countSireProgress');
+const countTrmt1 = document.getElementById('countTrmt1');
+const countTrmt2 = document.getElementById('countTrmt2');
+const countCmt2 = document.getElementById('countCmt2');
 const countSon = document.getElementById('countSon');
 const countKim = document.getElementById('countKim');
 const countLee = document.getElementById('countLee');
-const countDryDockDue = document.getElementById('countDryDockDue');
 const countCoc = document.getElementById('countCoc');
 const countCritical = document.getElementById('countCritical');
 
@@ -476,22 +479,24 @@ function highlightListCargoStatus(value) {
 }
 
 function getFilteredVessels() {
-  if (currentFilter === 'loading') {
-    return vessels.filter(v => normalizeVesselType(v.vessel_type) === 'Tanker');
-  }
-
-  if (currentFilter === 'ballast') {
+  if (currentFilter === 'vlcc') {
     return vessels.filter(v => String(v.size || '').trim().toUpperCase() === 'VLCC');
   }
 
-  if (currentFilter === 'container') {
-    return vessels.filter(v => String(v.team_name || v.teamName || '').trim() === 'TRMT3 & CMT2');
-  }
-
-
-
   if (currentFilter === 'sireprogress') {
     return vessels.filter(v => hasSireInProgress(v));
+  }
+
+  if (currentFilter === 'trmt1') {
+    return vessels.filter(v => String(v.team_name || v.teamName || '').trim() === 'TRMT1');
+  }
+
+  if (currentFilter === 'trmt2') {
+    return vessels.filter(v => String(v.team_name || v.teamName || '').trim() === 'TRMT2');
+  }
+
+  if (currentFilter === 'cmt2') {
+    return vessels.filter(v => String(v.team_name || v.teamName || '').trim() === 'TRMT3 & CMT2');
   }
 
   if (currentFilter === 'son') {
@@ -506,10 +511,6 @@ function getFilteredVessels() {
     return vessels.filter(v => String(v.owner_supervisor || '').trim() === '이창주 감독');
   }
 
-  if (currentFilter === 'drydockdue') {
-    return vessels.filter(v => isDryDockDueWithin6Months(v.next_dry_dock));
-  }
-
   if (currentFilter === 'coc') {
     return vessels.filter(v => hasAnyCoc(v));
   }
@@ -520,6 +521,8 @@ function getFilteredVessels() {
 
   return vessels;
 }
+
+
 
 function getReportViewUrl(vessel, reportKey) {
   const filename = vessel[reportKey];
@@ -658,14 +661,14 @@ function closeLabel() {
 function updateToolbarButtons() {
   const buttonMap = {
     all: filterAllBtn,
-    loading: filterLoadingBtn,
-    ballast: filterBallastBtn,
-    container: filterContainerBtn,
+    vlcc: filterVlccBtn,
     sireprogress: filterSireProgressBtn,
+    trmt1: filterTrmt1Btn,
+    trmt2: filterTrmt2Btn,
+    cmt2: filterCmt2Btn,
     son: filterSonBtn,
     kim: filterKimBtn,
     lee: filterLeeBtn,
-    drydockdue: filterDryDockDueBtn,
     coc: filterCocBtn,
     critical: filterCriticalBtn
   };
@@ -690,32 +693,37 @@ function updateToggleAllLabelsButton() {
     toggleAllLabelsBtn.classList.remove('active');
   }
 }
-
 function updateStatusBoard() {
   if (countAll) {
     countAll.textContent = `${vessels.length}척`;
   }
 
-  if (countLoading) {
-    countLoading.textContent = `${vessels.filter(v =>
-      normalizeVesselType(v.vessel_type) === 'Tanker'
-    ).length}척`;
-  }
-
-  if (countBallast) {
-    countBallast.textContent = `${vessels.filter(v =>
+  if (countVlcc) {
+    countVlcc.textContent = `${vessels.filter(v =>
       String(v.size || '').trim().toUpperCase() === 'VLCC'
-    ).length}척`;
-  }
-
-  if (countContainer) {
-    countContainer.textContent = `${vessels.filter(v =>
-      String(v.team_name || v.teamName || '').trim() === 'TRMT3 & CMT2'
     ).length}척`;
   }
 
   if (countSireProgress) {
     countSireProgress.textContent = `${vessels.filter(v => hasSireInProgress(v)).length}척`;
+  }
+
+  if (countTrmt1) {
+    countTrmt1.textContent = `${vessels.filter(v =>
+      String(v.team_name || v.teamName || '').trim() === 'TRMT1'
+    ).length}척`;
+  }
+
+  if (countTrmt2) {
+    countTrmt2.textContent = `${vessels.filter(v =>
+      String(v.team_name || v.teamName || '').trim() === 'TRMT2'
+    ).length}척`;
+  }
+
+  if (countCmt2) {
+    countCmt2.textContent = `${vessels.filter(v =>
+      String(v.team_name || v.teamName || '').trim() === 'TRMT3 & CMT2'
+    ).length}척`;
   }
 
   if (countSon) {
@@ -728,10 +736,6 @@ function updateStatusBoard() {
 
   if (countLee) {
     countLee.textContent = `${vessels.filter(v => String(v.owner_supervisor || '').trim() === '이창주 감독').length}척`;
-  }
-
-  if (countDryDockDue) {
-    countDryDockDue.textContent = `${vessels.filter(v => isDryDockDueWithin6Months(v.next_dry_dock)).length}척`;
   }
 
   if (countCoc) {
@@ -1460,14 +1464,14 @@ if (toggleAllLabelsBtn) {
 }
 
 if (filterAllBtn) filterAllBtn.addEventListener('click', () => setFilter('all'));
-if (filterLoadingBtn) filterLoadingBtn.addEventListener('click', () => setFilter('loading'));
-if (filterBallastBtn) filterBallastBtn.addEventListener('click', () => setFilter('ballast'));
-if (filterContainerBtn) filterContainerBtn.addEventListener('click', () => setFilter('container'));
+if (filterVlccBtn) filterVlccBtn.addEventListener('click', () => setFilter('vlcc'));
 if (filterSireProgressBtn) filterSireProgressBtn.addEventListener('click', () => setFilter('sireprogress'));
+if (filterTrmt1Btn) filterTrmt1Btn.addEventListener('click', () => setFilter('trmt1'));
+if (filterTrmt2Btn) filterTrmt2Btn.addEventListener('click', () => setFilter('trmt2'));
+if (filterCmt2Btn) filterCmt2Btn.addEventListener('click', () => setFilter('cmt2'));
 if (filterSonBtn) filterSonBtn.addEventListener('click', () => setFilter('son'));
 if (filterKimBtn) filterKimBtn.addEventListener('click', () => setFilter('kim'));
 if (filterLeeBtn) filterLeeBtn.addEventListener('click', () => setFilter('lee'));
-if (filterDryDockDueBtn) filterDryDockDueBtn.addEventListener('click', () => setFilter('drydockdue'));
 if (filterCocBtn) filterCocBtn.addEventListener('click', () => setFilter('coc'));
 if (filterCriticalBtn) filterCriticalBtn.addEventListener('click', () => setFilter('critical'));
 

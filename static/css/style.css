@@ -1177,3 +1177,15 @@ button:hover {
   overflow-wrap: anywhere;
   line-height: 1.45;
 }
+
+.due-red {
+  color: #ef4444;
+  font-weight: 700;
+}
+.report-table td.due-red,
+.report-table .due-date-cell.due-red {
+  color: #dc2626 !important;
+  font-weight: 700 !important;
+}
+
+
