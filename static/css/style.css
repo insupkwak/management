@@ -57,6 +57,7 @@ label {
 
 input,
 select,
+textarea,
 button {
   width: 100%;
   border-radius: 10px;
@@ -66,9 +67,16 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   background: #0f172a;
   color: #f9fafb;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 44px;
+  font-family: Arial, sans-serif;
 }
 
 button {
@@ -609,7 +617,6 @@ button:hover {
   width: 100%;
 }
 
-
 .report-link-grid-2x2 {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -620,8 +627,6 @@ button:hover {
   height: 42px;
   border-radius: 10px;
 }
-
-
 
 .report-link-grid .report-view-btn {
   width: 100%;
@@ -727,7 +732,8 @@ button:hover {
 
 .report-summary-grid {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -942,15 +948,21 @@ button:hover {
 
 .sire-row input,
 .sire-row select,
-.coc-grid input {
+.sire-row textarea {
   width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-top: 6px;
+}
+
+.sire-row textarea {
+  white-space: normal;
 }
 
 .sire-row input::placeholder,
+.sire-row textarea::placeholder,
 .coc-grid input::placeholder {
   color: #94a3b8;
   font-size: 12px;
@@ -974,6 +986,39 @@ button:hover {
 .map-value-blue {
   color: #2563eb;
   font-weight: 800;
+}
+
+/* Sire Report 전용 */
+.sire-report-table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.sire-report-table th,
+.sire-report-table td {
+  text-align: center;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.sire-report-table .sire-name-col,
+.sire-report-table td.sire-name-cell {
+  white-space: nowrap;
+  min-width: 160px;
+}
+
+.sire-report-table .sire-remark-col,
+.sire-report-table td.sire-remark-cell {
+  width: 33%;
+  min-width: 320px;
+  white-space: normal;
+}
+
+.sire-report-table td.sire-remark-cell {
+  text-align: left;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 @media (max-width: 1100px) {
@@ -1092,17 +1137,43 @@ button:hover {
     font-size: 11px;
     padding: 7px 5px;
   }
+} 
+
+
+.report-table td.left {
+  text-align: left;
 }
 
 
-.report-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+/* Condition Report 전용 */
+.condition-report-table {
+  width: 100%;
+  table-layout: auto;
 }
 
-.report-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+.condition-report-table th,
+.condition-report-table td {
+  text-align: center;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.condition-report-table .condition-name-col,
+.condition-report-table td.condition-name-cell {
+  white-space: nowrap;
+  min-width: 160px;
+}
+
+.condition-report-table .condition-remark-col,
+.condition-report-table td.condition-remark-cell {
+  width: 33%;
+  min-width: 320px;
+  white-space: normal;
+}
+
+.condition-report-table td.condition-remark-cell {
+  text-align: left;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }

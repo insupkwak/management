@@ -37,38 +37,49 @@
       </div>
     </div>
 
-    <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>선박명</th>
-            <th>관리사</th>
-            <th>선주감독</th>
-            <th>Type</th>
-            <th>Condition 종류</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>지적사항</th>
-            <th>잔여지적사항</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for vessel in vessels %}
-          <tr>
-            <td class="left strong">{{ vessel.name }}</td>
-            <td>{{ vessel.management_company }}</td>
-            <td>{{ vessel.owner_supervisor }}</td>
-            <td>{{ vessel.vessel_type }}</td>
-            <td>{{ vessel.condition_report_type }}</td>
-            <td>{{ vessel.condition_report_date }}</td>
-            <td>{{ vessel.condition_report_status }}</td>
-            <td>{{ vessel.condition_report_findings }}</td>
-            <td>{{ vessel.condition_report_open_findings }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="report-table-wrap">
+  <table class="report-table condition-report-table">
+    <thead>
+      <tr>
+        <th class="condition-name-col">선박명</th>
+        <th>관리사</th>
+        <th>선주감독</th>
+        <th>Type</th>
+        <th>Condition 종류</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>지적사항</th>
+        <th>잔여지적사항</th>
+        <th class="condition-remark-col">특이사항</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if vessels %}
+        {% for vessel in vessels %}
+        <tr>
+          <td class="condition-name-cell">{{ vessel.name }}</td>
+          <td>{{ vessel.management_company }}</td>
+          <td>{{ vessel.owner_supervisor }}</td>
+          <td>{{ vessel.vessel_type }}</td>
+          <td>{{ vessel.condition_report_type }}</td>
+          <td>{{ vessel.condition_report_date }}</td>
+          <td>{{ vessel.condition_report_status }}</td>
+          <td>{{ vessel.condition_report_findings }}</td>
+          <td>{{ vessel.condition_report_open_findings }}</td>
+          <td class="condition-remark-cell">{{ vessel.condition_report_remark }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="10" style="text-align:center;">데이터가 없습니다.</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+
+
   </div>
 </body>
 </html>

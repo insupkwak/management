@@ -104,6 +104,7 @@ def ensure_vessel_columns(conn: sqlite3.Connection) -> None:
         ("condition_report_status", "TEXT NOT NULL DEFAULT ''"),
         ("condition_report_findings", "TEXT NOT NULL DEFAULT ''"),
         ("condition_report_open_findings", "TEXT NOT NULL DEFAULT ''"),
+        ("condition_report_remark", "TEXT NOT NULL DEFAULT ''"),
     ]
 
     for i in range(1, 16):
@@ -121,6 +122,7 @@ def ensure_vessel_columns(conn: sqlite3.Connection) -> None:
         required_columns.append((f"sire_status_{i}", "TEXT NOT NULL DEFAULT ''"))
         required_columns.append((f"sire_findings_{i}", "TEXT NOT NULL DEFAULT ''"))
         required_columns.append((f"sire_open_findings_{i}", "TEXT NOT NULL DEFAULT ''"))
+        required_columns.append((f"sire_remark_{i}", "TEXT NOT NULL DEFAULT ''"))
 
     for report_key in VALID_REPORT_KEYS:
         required_columns.append((report_key, "TEXT NOT NULL DEFAULT ''"))
@@ -670,6 +672,7 @@ def build_report_flags(vessels: list[dict[str, Any]]) -> dict[str, bool]:
             or has_any_value("condition_report_status")
             or has_any_value("condition_report_findings")
             or has_any_value("condition_report_open_findings")
+            or has_any_value("condition_report_remark")
         ),
     }
 
@@ -690,6 +693,7 @@ def build_report_flags(vessels: list[dict[str, Any]]) -> dict[str, bool]:
             or has_any_value(f"sire_status_{i}")
             or has_any_value(f"sire_findings_{i}")
             or has_any_value(f"sire_open_findings_{i}")
+            or has_any_value(f"sire_remark_{i}")
         )
 
     return flags
@@ -923,18 +927,22 @@ def api_save_single_vessel():
             fields[f"sire_status_{i}"] = ""
             fields[f"sire_findings_{i}"] = ""
             fields[f"sire_open_findings_{i}"] = ""
+            fields[f"sire_remark_{i}"] = ""
         else:
             fields[f"sire_type_{i}"] = str(payload.get(f"sireType{i}", "")).strip()
             fields[f"sire_date_{i}"] = str(payload.get(f"sireDate{i}", "")).strip()
             fields[f"sire_status_{i}"] = normalize_sire_status(payload.get(f"sireStatus{i}"))
             fields[f"sire_findings_{i}"] = str(payload.get(f"sireFindings{i}", "")).strip()
             fields[f"sire_open_findings_{i}"] = str(payload.get(f"sireOpenFindings{i}", "")).strip()
+            fields[f"sire_remark_{i}"] = str(payload.get(f"sireRemark{i}", "")).strip()
 
     fields["condition_report_type"] = str(payload.get("conditionReportType", "")).strip()
     fields["condition_report_date"] = str(payload.get("conditionReportDate", "")).strip()
     fields["condition_report_status"] = normalize_sire_status(payload.get("conditionReportStatus"))
     fields["condition_report_findings"] = str(payload.get("conditionReportFindings", "")).strip()
     fields["condition_report_open_findings"] = str(payload.get("conditionReportOpenFindings", "")).strip()
+    fields["condition_report_remark"] = str(payload.get("conditionReportRemark", "")).strip()
+    
 
     db = get_db()
     search_name = original_name if original_name else name
@@ -1128,13 +1136,14 @@ def sire_report_page():
             sire_status = str(vessel.get(f"sire_status_{i}", "")).strip()
             sire_findings = str(vessel.get(f"sire_findings_{i}", "")).strip()
             sire_open_findings = str(vessel.get(f"sire_open_findings_{i}", "")).strip()
+            sire_remark = str(vessel.get(f"sire_remark_{i}", "")).strip()
 
-            if sire_type or sire_date or sire_status or sire_findings or sire_open_findings:
+            if sire_type or sire_date or sire_status or sire_findings or sire_open_findings or sire_remark:
                 vessel_has_sire = True
 
                 report_rows.append({
                     "name": vessel.get("name", ""),
-                    "vessel_type": vessel.get("vessel_type", ""),
+                    "size": vessel.get("size") or vessel.get("vessel_type", ""),
                     "management_company": vessel.get("management_company", ""),
                     "owner_supervisor": vessel.get("owner_supervisor", ""),
                     "cargo_status": vessel.get("cargo_status", ""),
@@ -1144,6 +1153,7 @@ def sire_report_page():
                     "sire_status": sire_status,
                     "sire_findings": sire_findings,
                     "sire_open_findings": sire_open_findings,
+                    "sire_remark": sire_remark,
                 })
 
                 if sire_status == "결함조치 중":
@@ -1180,6 +1190,7 @@ def condition_report_page():
         or str(v.get("condition_report_status", "")).strip()
         or str(v.get("condition_report_findings", "")).strip()
         or str(v.get("condition_report_open_findings", "")).strip()
+        or str(v.get("condition_report_remark", "")).strip()
     ]
 
     condition_report_count = len(vessels_with_condition)

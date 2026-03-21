@@ -349,11 +349,13 @@ function makeSireLines(vessel) {
     const status = String(vessel[`sire_status_${i}`] || '').trim();
     const findings = String(vessel[`sire_findings_${i}`] || '').trim();
     const openFindings = String(vessel[`sire_open_findings_${i}`] || '').trim();
+    const remark = String(vessel[`sire_remark_${i}`] || '').trim();
 
     if (type || date || status || findings || openFindings) {
       let detail = '';
       if (findings) detail += ` / 지적 ${escapeHtml(findings)}건`;
       if (openFindings) detail += ` / 잔여 ${escapeHtml(openFindings)}건`;
+      if (remark) detail += ` / ${escapeHtml(remark)}`;
 
       lines.push(`
         <div class="line issue-line">
@@ -372,20 +374,23 @@ function makeSireLines(vessel) {
   return lines.join('');
 }
 
+
 function makeConditionReportLines(vessel) {
   const type = String(vessel.condition_report_type || '').trim();
   const date = String(vessel.condition_report_date || '').trim();
   const status = String(vessel.condition_report_status || '').trim();
   const findings = String(vessel.condition_report_findings || '').trim();
   const openFindings = String(vessel.condition_report_open_findings || '').trim();
+  const remark = String(vessel.condition_report_remark || '').trim();
 
-  if (!type && !date && !status && !findings && !openFindings) {
+  if (!type && !date && !status && !findings && !openFindings && !remark) {
     return '';
   }
 
   let detail = '';
   if (findings) detail += ` / 지적 ${escapeHtml(findings)}건`;
   if (openFindings) detail += ` / 잔여 ${escapeHtml(openFindings)}건`;
+  if (remark) detail += ` / ${escapeHtml(remark)}`;
 
   return `
     <div class="line issue-line">
@@ -647,6 +652,7 @@ function closeLabel() {
   labelMode = 'none';
   activeLabelIndex = null;
   clearLabels();
+  resetForm();
 }
 
 function updateToolbarButtons() {
@@ -802,6 +808,7 @@ const normalized = {
         normalized[`sire_status_${i}`] = normalizeSireStatus(normalized[`sire_status_${i}`] || '');
         normalized[`sire_findings_${i}`] = normalized[`sire_findings_${i}`] || '';
         normalized[`sire_open_findings_${i}`] = normalized[`sire_open_findings_${i}`] || '';
+        normalized[`sire_remark_${i}`] = normalized[`sire_remark_${i}`] || '';
       }
 
       normalized.condition_report_type = normalized.condition_report_type || '';
@@ -809,6 +816,7 @@ const normalized = {
       normalized.condition_report_status = normalizeSireStatus(normalized.condition_report_status || '');
       normalized.condition_report_findings = normalized.condition_report_findings || '';
       normalized.condition_report_open_findings = normalized.condition_report_open_findings || '';
+      normalized.condition_report_remark = normalized.condition_report_remark || '';
 
       return normalized;
     });
@@ -1004,6 +1012,8 @@ function handleShipClick(globalIndex) {
   if (labelMode === 'one' && activeLabelIndex === globalIndex) {
     labelMode = 'none';
     activeLabelIndex = null;
+    clearLabels();
+    resetForm();
   } else {
     labelMode = 'one';
     activeLabelIndex = globalIndex;
@@ -1287,11 +1297,18 @@ item.innerHTML = `
 
 function resetForm() {
   form.reset();
+
+  document.getElementById('vesselName').value = '';
   document.getElementById('vesselType').value = 'Tanker';
-  document.getElementById('cargoStatus').value = 'Loading';
-  document.getElementById('size').value = '';
+  document.getElementById('managementCompany').value = '';
+  document.getElementById('managementSupervisor').value = '';
   document.getElementById('operationManager').value = '';
+  document.getElementById('ownerSupervisor').value = '';
   document.getElementById('teamName').value = '';
+  document.getElementById('builder').value = '';
+  document.getElementById('size').value = '';
+  document.getElementById('voyagePlan').value = '';
+  document.getElementById('cargoStatus').value = 'Loading';
   document.getElementById('latitude').value = '';
   document.getElementById('longitude').value = '';
 
@@ -1320,11 +1337,13 @@ function resetForm() {
     const sireStatusEl = document.getElementById(`sireStatus${i}`);
     const sireFindingsEl = document.getElementById(`sireFindings${i}`);
     const sireOpenFindingsEl = document.getElementById(`sireOpenFindings${i}`);
+    const sireRemarkEl = document.getElementById(`sireRemark${i}`);
 
     if (sireTypeEl) sireTypeEl.value = '';
     if (sireStatusEl) sireStatusEl.value = '';
     if (sireFindingsEl) sireFindingsEl.value = '';
     if (sireOpenFindingsEl) sireOpenFindingsEl.value = '';
+    if (sireRemarkEl) sireRemarkEl.value = '';
     setDateInputValue(`sireDate${i}`, '');
   }
 
@@ -1333,10 +1352,32 @@ function resetForm() {
   document.getElementById('conditionReportStatus').value = '';
   document.getElementById('conditionReportFindings').value = '';
   document.getElementById('conditionReportOpenFindings').value = '';
+  document.getElementById('conditionReportRemark').value = '';
 
   editIndex = null;
+  activeLabelIndex = null;
+  labelMode = 'none';
+
+  uploadTargetIndex = null;
+  uploadTargetReportKey = null;
+
+  if (shipSearchInput) {
+    shipSearchInput.value = '';
+  }
+
+  if (shipSearchDropdown) {
+    shipSearchDropdown.innerHTML = '';
+    shipSearchDropdown.classList.remove('show');
+  }
+
+  clearLabels();
+  updateToggleAllLabelsButton();
   updateVesselTypeUI();
+  renderExternalLabels();
 }
+
+
+
 
 
 function setFilter(filterName) {
@@ -1590,6 +1631,7 @@ if (form) {
       vessel[`sireStatus${i}`] = document.getElementById(`sireStatus${i}`)?.value || '';
       vessel[`sireFindings${i}`] = document.getElementById(`sireFindings${i}`)?.value || '';
       vessel[`sireOpenFindings${i}`] = document.getElementById(`sireOpenFindings${i}`)?.value || '';
+      vessel[`sireRemark${i}`] = document.getElementById(`sireRemark${i}`)?.value || '';
     }
 
     vessel.conditionReportType = document.getElementById('conditionReportType')?.value.trim() || '';
@@ -1597,6 +1639,7 @@ if (form) {
     vessel.conditionReportStatus = document.getElementById('conditionReportStatus')?.value || '';
     vessel.conditionReportFindings = document.getElementById('conditionReportFindings')?.value || '';
     vessel.conditionReportOpenFindings = document.getElementById('conditionReportOpenFindings')?.value || '';
+    vessel.conditionReportRemark = document.getElementById('conditionReportRemark')?.value || '';
 
 if (currentVesselType === 'Container') {
   vessel.cargoStatus = '';
@@ -1647,8 +1690,12 @@ if (currentVesselType === 'Container') {
 }
 
 if (resetBtn) {
-  resetBtn.addEventListener('click', resetForm);
+  resetBtn.addEventListener('click', () => {
+    resetForm();
+  });
 }
+
+
 
 function fillFormByVessel(index) {
   const vessel = vessels[index];
@@ -1687,11 +1734,14 @@ function fillFormByVessel(index) {
     const sireStatusEl = document.getElementById(`sireStatus${i}`);
     const sireFindingsEl = document.getElementById(`sireFindings${i}`);
     const sireOpenFindingsEl = document.getElementById(`sireOpenFindings${i}`);
+    const sireRemarkEl = document.getElementById(`sireRemark${i}`);
+    
 
     if (sireTypeEl) sireTypeEl.value = vessel[`sire_type_${i}`] || '';
     if (sireStatusEl) sireStatusEl.value = vessel[`sire_status_${i}`] || '';
     if (sireFindingsEl) sireFindingsEl.value = vessel[`sire_findings_${i}`] || '';
     if (sireOpenFindingsEl) sireOpenFindingsEl.value = vessel[`sire_open_findings_${i}`] || '';
+    if (sireRemarkEl) sireRemarkEl.value = vessel[`sire_remark_${i}`] || '';
     setDateInputValue(`sireDate${i}`, vessel[`sire_date_${i}`] || '');
   }
 
@@ -1700,6 +1750,7 @@ function fillFormByVessel(index) {
   document.getElementById('conditionReportStatus').value = vessel.condition_report_status || '';
   document.getElementById('conditionReportFindings').value = vessel.condition_report_findings || '';
   document.getElementById('conditionReportOpenFindings').value = vessel.condition_report_open_findings || '';
+  document.getElementById('conditionReportRemark').value = vessel.condition_report_remark || '';
 
   document.getElementById('latitude').value = vessel.latitude ?? '';
   document.getElementById('longitude').value = vessel.longitude ?? '';
