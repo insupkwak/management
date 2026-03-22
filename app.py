@@ -1235,7 +1235,6 @@ def condition_report_page():
 
 
 
-
 @app.route("/api/upload-positions", methods=["POST"])
 def api_upload_positions():
     file = request.files.get("file")
@@ -1250,22 +1249,33 @@ def api_upload_positions():
         workbook = load_workbook(file, data_only=True)
         worksheet = workbook.active
 
-        latest_by_name, total_rows, invalid_count = pick_latest_rows_by_vessel(worksheet)
+        latest_by_name, _, _ = pick_latest_rows_by_vessel(worksheet)
 
         db = get_db()
+        db_rows = db.execute("SELECT id, name FROM vessels").fetchall()
+
+        db_name_map = {
+            normalize_name(row["name"]): {"id": row["id"], "name": row["name"]}
+            for row in db_rows
+        }
+
         updated_count = 0
-        not_found_count = 0
+        success_name_set = set()
 
-        for _, row in latest_by_name.items():
-            existing = db.execute("""
-                SELECT id
-                FROM vessels
-                WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
-                LIMIT 1
-            """, (row["name"],)).fetchone()
-
+        for normalized_name, row in latest_by_name.items():
+            # DB에 없는 선박은 완전히 무시
+            existing = db_name_map.get(normalized_name)
             if not existing:
-                not_found_count += 1
+                continue
+
+            lat = row.get("latitude")
+            lon = row.get("longitude")
+
+            # 좌표가 비정상이면 업데이트하지 않음
+            if lat is None or lon is None:
+                continue
+
+            if not (-90 <= float(lat) <= 90 and -180 <= float(lon) <= 180):
                 continue
 
             db.execute("""
@@ -1273,26 +1283,35 @@ def api_upload_positions():
                 SET latitude = ?, longitude = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (
-                row["latitude"],
-                row["longitude"],
+                float(lat),
+                float(lon),
                 existing["id"],
             ))
+
             updated_count += 1
+            success_name_set.add(existing["name"])
 
         db.commit()
+
+        not_updated_vessels = sorted([
+            item["name"] for item in db_name_map.values()
+            if item["name"] not in success_name_set
+        ])
 
         return no_cache_json({
             "success": True,
             "message": "위치 업데이트 완료",
-            "totalRows": total_rows,
             "updatedCount": updated_count,
-            "notFoundCount": not_found_count,
-            "invalidCount": invalid_count,
+            "notUpdatedVessels": not_updated_vessels,
         })
+
     except ValueError as e:
         return no_cache_json({"success": False, "message": str(e)}, 400)
     except Exception as e:
         return no_cache_json({"success": False, "message": f"엑셀 처리 실패: {e}"}, 500)
+
+
+
 
 
 @app.route("/uploads/reports/<path:filename>")

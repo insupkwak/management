@@ -510,7 +510,22 @@
 
 </div>
 
+
+<div id="customAlert" class="custom-alert-overlay hidden">
+  <div class="custom-alert-box">
+    <div class="custom-alert-title">알림</div>
+    <div id="customAlertMessage" class="custom-alert-message"></div>
+    <div class="custom-alert-actions">
+      <button type="button" id="customAlertOkBtn" class="custom-alert-ok">확인</button>
+    </div>
+  </div>
+</div>
+
+
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="{{ url_for('static', filename='js/app.js', v=version) }}"></script>
+
+
 </body>
 </html>

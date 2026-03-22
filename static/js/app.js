@@ -61,6 +61,10 @@ const sireSection = document.getElementById('sireSection');
 const COC_COUNT = 10;
 const SIRE_COUNT = 3;
 
+
+
+
+
 let vessels = [];
 let markers = [];
 let nameMarkers = [];
@@ -99,6 +103,40 @@ const shipSvg = (color) => `
     </svg>
   </div>
 `;
+
+
+
+const customAlert = document.getElementById('customAlert');
+const customAlertMessage = document.getElementById('customAlertMessage');
+const customAlertOkBtn = document.getElementById('customAlertOkBtn');
+
+function showCustomAlert(message) {
+  if (!customAlert || !customAlertMessage) {
+    alert(message);
+    return;
+  }
+  customAlertMessage.textContent = message;
+  customAlert.classList.remove('hidden');
+}
+
+function hideCustomAlert() {
+  if (!customAlert) return;
+  customAlert.classList.add('hidden');
+}
+
+if (customAlertOkBtn) {
+  customAlertOkBtn.addEventListener('click', hideCustomAlert);
+}
+
+if (customAlert) {
+  customAlert.addEventListener('click', (e) => {
+    if (e.target === customAlert) {
+      hideCustomAlert();
+    }
+  });
+}
+
+
 
 function shipNameHtml(name) {
   return `<div class="ship-name-text">${escapeHtml(name)}</div>`;
@@ -953,6 +991,8 @@ async function uploadReportFile(index, reportKey, file) {
   }
 }
 
+
+
 async function uploadPositionExcel(file) {
   const formData = new FormData();
   formData.append('file', file);
@@ -971,25 +1011,38 @@ async function uploadPositionExcel(file) {
     const result = await response.json();
 
     if (!response.ok || !result.success) {
-      alert(result.message || '위치 업데이트에 실패했습니다.');
+      showCustomAlert(result.message || '위치 업데이트에 실패했습니다.');
       return;
     }
 
     await loadData({ preserveSelection: true, fitBounds: false });
-    renderSearchSuggestions(shipSearchInput.value.trim());
 
-    alert(
-      `위치 업데이트 완료\n` +
-      `- 전체 행: ${result.totalRows}건\n` +
-      `- 업데이트: ${result.updatedCount}척\n` +
-      `- 미일치: ${result.notFoundCount}척\n` +
-      `- 좌표오류: ${result.invalidCount}건`
-    );
+    const successCount = result.updatedCount || 0;
+    const failedList = result.notUpdatedVessels || [];
+    const failedCount = failedList.length;
+
+    let message = '';
+    message += `업데이트 완료 : ${successCount}척\n`;
+    message += `업데이트 실패 : ${failedCount}척\n`;
+
+    if (failedCount > 0) {
+      message += `\n업데이트 실패 선박 List\n`;
+      message += failedList.join('\n');
+    }
+
+    showCustomAlert(message);
+
   } catch (error) {
     console.error('위치 업데이트 실패:', error);
-    alert('위치 업데이트 중 오류가 발생했습니다.');
+    showCustomAlert('위치 업데이트 중 오류가 발생했습니다.');
   }
 }
+
+
+
+
+
+
 
 function clearMarkers() {
   markers.forEach(marker => map.removeLayer(marker));
