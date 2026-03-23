@@ -80,7 +80,7 @@ textarea {
 }
 
 button {
-  margin-top: 14px;
+  margin-top: 0;
   background: #2563eb;
   color: white;
   border: none;
@@ -826,6 +826,11 @@ button:hover {
 
 #vesselForm button {
   width: 100%;
+  margin-top: 14px;
+}
+
+#vesselForm > button + button {
+  margin-top: 10px;
 }
 
 #vesselForm button + button {
@@ -1814,4 +1819,28 @@ label {
 /* 🔥 section 간 divider 간격 */
 .cost-divider {
   margin: 4px 0;
+}
+
+
+button {
+  margin-top: 0;
+  background: #2563eb;
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.card h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+#vesselForm > button {
+  width: 100%;
+  margin-top: 14px;
+}
+
+#vesselForm > button + button {
+  margin-top: 10px;
 }

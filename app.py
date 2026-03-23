@@ -888,7 +888,13 @@ def get_management_cost_report_rows(filter_name: str, selected_year: str) -> lis
 
     return result
 
-def enrich_management_cost_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+
+
+def enrich_management_cost_rows(
+    rows: list[dict[str, Any]],
+    selected_range: str = "전체",
+    selected_view: str = "전체",
+) -> list[dict[str, Any]]:
     enriched = []
 
     for row in rows:
@@ -913,19 +919,28 @@ def enrich_management_cost_rows(rows: list[dict[str, Any]]) -> list[dict[str, An
             row.get("aor_unclaimed_tech_count"), row.get("aor_unclaimed_tech_amount")
         )
 
-        total_amount = (
-            parse_money(row.get("opex_actual_crew_amount"))
-            + parse_money(row.get("opex_actual_tech_amount"))
-            + parse_money(row.get("aor_actual_crew_amount"))
-            + parse_money(row.get("aor_actual_tech_amount"))
-            + parse_money(row.get("aor_unclaimed_crew_amount"))
-            + parse_money(row.get("aor_unclaimed_tech_amount"))
-        )
+        total_amount = 0.0
+
+        if selected_range in {"전체", "OPEX"}:
+            if selected_view in {"전체", "Crew"}:
+                total_amount += parse_money(row.get("opex_actual_crew_amount"))
+            if selected_view in {"전체", "Tech"}:
+                total_amount += parse_money(row.get("opex_actual_tech_amount"))
+
+        if selected_range in {"전체", "AOR"}:
+            if selected_view in {"전체", "Crew"}:
+                total_amount += parse_money(row.get("aor_actual_crew_amount"))
+                total_amount += parse_money(row.get("aor_unclaimed_crew_amount"))
+            if selected_view in {"전체", "Tech"}:
+                total_amount += parse_money(row.get("aor_actual_tech_amount"))
+                total_amount += parse_money(row.get("aor_unclaimed_tech_amount"))
+
         new_row["total_amount_display"] = format_money(total_amount)
 
         enriched.append(new_row)
 
     return enriched
+
 
 
 def format_usd(value):
@@ -1164,7 +1179,11 @@ def management_cost_report_page():
     base_vessels = get_all_vessels()
     filtered_vessels = apply_filter_to_vessels(base_vessels, filter_name)
     report_rows = get_management_cost_report_rows(filter_name, selected_year)
-    report_rows = enrich_management_cost_rows(report_rows)
+    report_rows = enrich_management_cost_rows(
+        report_rows,
+        selected_range=selected_range,
+        selected_view=selected_view,
+)
 
     return render_template(
         "management_cost_report.html",

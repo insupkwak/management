@@ -16,8 +16,7 @@
 <body>
   <div class="container">
     <aside class="sidebar">
-      <h1>Vessel Position & Report</h1>
-      <p>선박 위치, 현안업무, COC, Sire Vetting, Report 파일을 통합 관리합니다.</p>
+      <h1>선박관리사이트</h1>
 
 
 
@@ -442,7 +441,7 @@
 
       <!-- 4. Sire Vetting 정보 -->
       <div class="accordion-section" id="sireSectionWrap">
-        <button type="button" class="accordion-toggle">Sire Vetting 정보</button>
+        <button type="button" class="accordion-toggle">Sire 현황</button>
         <div class="accordion-content" id="sireSection">
           <div class="sire-block">
             <div class="sire-row">
@@ -583,7 +582,7 @@
                 <input id="opexActualTechCount" type="number" min="0" placeholder="건" />
                 <input id="opexActualTechAmount" type="text" placeholder="금액" />
               </div>
-
+               <div class="cost-divider"></div>
               <div class="cost-subtitle">AOR</div>
               <div class="cost-row cost-row-4">
                 <div class="cost-type">Crew</div>
@@ -676,7 +675,7 @@
 <input id="positionExcelInput" type="file" accept=".xlsx" hidden />
 <input id="reportFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" hidden />
 
-<button type="button" id="managementCostUploadBtn" class="position-upload-btn">
+<button type="button" id="managementCostUploadBtn" class="btn-secondary report-upload-btn">
   관리사 비용 Excel 업로드
 </button>
 <input
