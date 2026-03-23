@@ -89,6 +89,7 @@ let currentFilter = 'cmt2';
 let uploadTargetIndex = null;
 let uploadTargetReportKey = null;
 let isLoading = false;
+let managementCostRequestSeq = 0;
 
 const REPORT_KEYS = [
   'report1_file',
@@ -1557,8 +1558,9 @@ function resetForm() {
   document.getElementById('conditionReportOpenFindings').value = '';
   document.getElementById('conditionReportRemark').value = '';
 
-
+  managementCostRequestSeq += 1;
   resetManagementCostFields(false);
+  
 
   editIndex = null;
   activeLabelIndex = null;
@@ -1633,6 +1635,8 @@ function fillManagementCostFields(cost = {}) {
   document.getElementById('costRemark').value = cost.cost_remark || '';
 }
 
+
+
 async function loadManagementCostByYear() {
   const yearEl = document.getElementById('opexContractYear');
   const vesselNameEl = document.getElementById('vesselName');
@@ -1641,6 +1645,8 @@ async function loadManagementCostByYear() {
 
   const year = yearEl.value.trim();
   const vesselName = vesselNameEl.value.trim();
+
+  const requestSeq = ++managementCostRequestSeq;
 
   resetManagementCostFields(true);
 
@@ -1661,16 +1667,29 @@ async function loadManagementCostByYear() {
 
     const result = await response.json();
 
+    if (requestSeq !== managementCostRequestSeq) {
+      return;
+    }
+
+    const currentYear = document.getElementById('opexContractYear')?.value.trim() || '';
+    const currentVesselName = document.getElementById('vesselName')?.value.trim() || '';
+
+    if (currentYear !== year || currentVesselName !== vesselName) {
+      return;
+    }
+
     if (!response.ok || !result.success) {
       return;
     }
 
     fillManagementCostFields(result.data || {});
   } catch (error) {
+    if (requestSeq !== managementCostRequestSeq) {
+      return;
+    }
     console.error('관리사 비용 조회 실패:', error);
   }
 }
-
 
 const opexContractYear = document.getElementById('opexContractYear');
 
