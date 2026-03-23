@@ -3,9 +3,10 @@ from __future__ import annotations
 import math
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from management_cost_excel import aggregate_management_cost_excel
 
 from flask import (
     Flask,
@@ -42,7 +43,6 @@ VALID_REPORT_KEYS = {
     "report8_file",
 }
 
-OWNER_SUPERVISORS = {"손유석 감독", "김흥민 감독", "이창주 감독"}
 VALID_VESSEL_TYPES = {"Tanker", "Container"}
 VALID_SIRE_STATUS = {"예정", "결함조치 중", "수검완료"}
 VALID_TEAM_NAMES = {"TRMT1", "TRMT2", "TRMT3 & CMT2"}
@@ -62,19 +62,21 @@ def ensure_dirs() -> None:
     REPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def get_db() -> sqlite3.Connection:
+def get_db():
     if "db" not in g:
-        conn = sqlite3.connect(DB_PATH, timeout=30)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA busy_timeout=30000;")
-        g.db = conn
+        g.db = sqlite3.connect(
+            DB_PATH,
+            timeout=30,
+            check_same_thread=False
+        )
+        g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA journal_mode=WAL")
+        g.db.execute("PRAGMA busy_timeout = 30000")
     return g.db
 
 
 @app.teardown_appcontext
-def close_db(_exception):
+def close_db(error=None):
     db = g.pop("db", None)
     if db is not None:
         db.close()
@@ -132,6 +134,34 @@ def ensure_vessel_columns(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE vessels ADD COLUMN {col_name} {col_def}")
 
 
+def ensure_management_cost_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vessel_management_costs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vessel_id INTEGER NOT NULL,
+            cost_year TEXT NOT NULL DEFAULT '',
+            opex_contract_crew_amount TEXT NOT NULL DEFAULT '',
+            opex_contract_tech_amount TEXT NOT NULL DEFAULT '',
+            opex_actual_crew_count TEXT NOT NULL DEFAULT '',
+            opex_actual_crew_amount TEXT NOT NULL DEFAULT '',
+            opex_actual_tech_count TEXT NOT NULL DEFAULT '',
+            opex_actual_tech_amount TEXT NOT NULL DEFAULT '',
+            aor_actual_crew_count TEXT NOT NULL DEFAULT '',
+            aor_actual_crew_amount TEXT NOT NULL DEFAULT '',
+            aor_actual_tech_count TEXT NOT NULL DEFAULT '',
+            aor_actual_tech_amount TEXT NOT NULL DEFAULT '',
+            aor_unclaimed_crew_count TEXT NOT NULL DEFAULT '',
+            aor_unclaimed_crew_amount TEXT NOT NULL DEFAULT '',
+            aor_unclaimed_tech_count TEXT NOT NULL DEFAULT '',
+            aor_unclaimed_tech_amount TEXT NOT NULL DEFAULT '',
+            cost_remark TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(vessel_id, cost_year),
+            FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON DELETE CASCADE
+        )
+    """)
+
+
 def init_db() -> None:
     ensure_dirs()
     conn = sqlite3.connect(DB_PATH, timeout=30)
@@ -139,10 +169,12 @@ def init_db() -> None:
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute("PRAGMA busy_timeout=30000;")
+        conn.execute("PRAGMA foreign_keys=ON;")
         if SCHEMA_PATH.exists():
             schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
             conn.executescript(schema_sql)
         ensure_vessel_columns(conn)
+        ensure_management_cost_table(conn)
         conn.commit()
     finally:
         conn.close()
@@ -163,6 +195,34 @@ def safe_float(value: Any) -> float | None:
         return None
     return None
 
+def parse_money(value: Any) -> float:
+    text = str(value or "").strip()
+    if not text:
+        return 0.0
+
+    text = text.replace("$", "").replace(",", "").strip()
+
+    try:
+        return float(text)
+    except Exception:
+        return 0.0
+
+
+def format_money(value: Any) -> str:
+    amount = parse_money(value)
+    if amount == 0:
+        return "$ 0"
+    return f"$ {amount:,.0f}"
+
+
+def format_count_amount(count_value: Any, amount_value: Any) -> str:
+    count_text = str(count_value or "").strip()
+    amount = format_money(amount_value)
+
+    if count_text:
+        return f"{count_text}건 / {amount}"
+    return amount
+
 
 def allowed_file(filename: str, allowed_extensions: set[str]) -> bool:
     if "." not in filename:
@@ -175,6 +235,10 @@ def get_version() -> int:
     targets = [
         BASE_DIR / "templates" / "index.html",
         BASE_DIR / "templates" / "report.html",
+        BASE_DIR / "templates" / "coc_report.html",
+        BASE_DIR / "templates" / "sire_report.html",
+        BASE_DIR / "templates" / "condition_report.html",
+        BASE_DIR / "templates" / "management_cost_report.html",
         BASE_DIR / "static" / "css" / "style.css",
         BASE_DIR / "static" / "js" / "app.js",
         Path(__file__),
@@ -341,7 +405,7 @@ def extract_lat_lon_from_combined_text(text: str) -> tuple[float | None, float |
 
     raw = raw.replace("º", "°").replace("’", "'").replace("`", "'").replace("“", '"').replace("”", '"')
 
-    directional_parts = re.findall(r'([NSEW][^NSEW/]+)', raw)
+    directional_parts = re.findall(r"([NSEW][^NSEW/]+)", raw)
     if len(directional_parts) >= 2:
         lat = None
         lon = None
@@ -425,8 +489,6 @@ def is_new_position_format(headers: list[Any]) -> bool:
     )
 
 
-
-
 def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]:
     rows = list(ws.iter_rows(values_only=True))
     if not rows:
@@ -439,10 +501,6 @@ def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]
         headers = list(rows[header_row_index])
         data_rows = rows[header_row_index + 1:]
 
-        # -------------------------------
-        # 새 양식
-        # 2행 헤더형식도 가능, 1행 헤더형식도 가능하게
-        # -------------------------------
         if is_new_position_format(headers):
             latest_by_name: dict[str, dict[str, Any]] = {}
             total_rows = 0
@@ -454,25 +512,25 @@ def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]
 
                 total_rows += 1
 
-                raw_name = row[3] if len(row) > 3 else None   # D
+                raw_name = row[3] if len(row) > 3 else None
                 name = str(raw_name or "").strip()
                 if not name:
                     invalid_count += 1
                     continue
 
-                dt_value = parse_excel_datetime(row[8] if len(row) > 8 else None)   # I
+                dt_value = parse_excel_datetime(row[8] if len(row) > 8 else None)
 
                 lat = parse_degree_minute_coordinate(
-                    row[17] if len(row) > 17 else None,   # R
-                    row[18] if len(row) > 18 else None,   # S
-                    row[19] if len(row) > 19 else None,   # T
+                    row[17] if len(row) > 17 else None,
+                    row[18] if len(row) > 18 else None,
+                    row[19] if len(row) > 19 else None,
                     "lat",
                 )
 
                 lon = parse_degree_minute_coordinate(
-                    row[20] if len(row) > 20 else None,   # U
-                    row[21] if len(row) > 21 else None,   # V
-                    row[22] if len(row) > 22 else None,   # W
+                    row[20] if len(row) > 20 else None,
+                    row[21] if len(row) > 21 else None,
+                    row[22] if len(row) > 22 else None,
                     "lon",
                 )
 
@@ -505,24 +563,15 @@ def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]
 
             return latest_by_name, total_rows, invalid_count
 
-        # -------------------------------
-        # 기존 양식
-        # -------------------------------
         name_idx = find_header_index(headers, [
             "선명", "선박명", "ship name", "shipname", "vesselname", "vessel", "name"
         ])
         date_idx = find_header_index(headers, [
             "date", "일자", "날짜", "시간", "datetime", "updatedate", "updatetime"
         ])
-        lat_idx = find_header_index(headers, [
-            "latitude", "lat", "위도"
-        ])
-        lon_idx = find_header_index(headers, [
-            "longitude", "lon", "lng", "경도"
-        ])
-        position_idx = find_header_index(headers, [
-            "위치", "position", "pos", "location"
-        ])
+        lat_idx = find_header_index(headers, ["latitude", "lat", "위도"])
+        lon_idx = find_header_index(headers, ["longitude", "lon", "lng", "경도"])
+        position_idx = find_header_index(headers, ["위치", "position", "pos", "location"])
 
         if name_idx is None:
             raise ValueError("엑셀 헤더에서 선명 또는 선박명을 찾을 수 없습니다.")
@@ -607,19 +656,15 @@ def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]
 
         return latest_by_name, total_rows, invalid_count
 
-    # 1순위: 2행 헤더 시도
     try:
         result = parse_with_header_row(1)
-        parsed_map, total_rows, invalid_count = result
+        parsed_map, total_rows, _ = result
         if parsed_map or total_rows > 0:
             return result
     except ValueError:
         pass
 
-    # 2순위: 1행 헤더 시도
     return parse_with_header_row(0)
-
-
 
 
 def get_all_vessels() -> list[dict[str, Any]]:
@@ -639,6 +684,82 @@ def get_vessel_by_name(name: str) -> dict[str, Any] | None:
     return row_to_vessel_dict(row) if row else None
 
 
+def get_management_cost_by_vessel_and_year(vessel_id: int, cost_year: str) -> dict[str, Any] | None:
+    db = get_db()
+    row = db.execute("""
+        SELECT *
+        FROM vessel_management_costs
+        WHERE vessel_id = ? AND cost_year = ?
+        LIMIT 1
+    """, (vessel_id, cost_year)).fetchone()
+    return dict(row) if row else None
+
+
+def normalize_count_text(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace(",", "").strip()
+    try:
+        return str(int(float(text)))
+    except Exception:
+        return ""
+
+def normalize_amount_text(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace("$", "").replace(",", "").strip()
+    try:
+        return str(int(round(float(text))))
+    except Exception:
+        return ""
+
+def save_management_cost(vessel_id: int, cost_year: str, payload: dict[str, Any]) -> None:
+    db = get_db()
+
+    fields = {
+        "opex_contract_crew_amount": normalize_amount_text(payload.get("opexContractCrewAmount")),
+        "opex_contract_tech_amount": normalize_amount_text(payload.get("opexContractTechAmount")),
+        "opex_actual_crew_count": normalize_count_text(payload.get("opexActualCrewCount")),
+        "opex_actual_crew_amount": normalize_amount_text(payload.get("opexActualCrewAmount")),
+        "opex_actual_tech_count": normalize_count_text(payload.get("opexActualTechCount")),
+        "opex_actual_tech_amount": normalize_amount_text(payload.get("opexActualTechAmount")),
+        "aor_actual_crew_count": normalize_count_text(payload.get("aorActualCrewCount")),
+        "aor_actual_crew_amount": normalize_amount_text(payload.get("aorActualCrewAmount")),
+        "aor_actual_tech_count": normalize_count_text(payload.get("aorActualTechCount")),
+        "aor_actual_tech_amount": normalize_amount_text(payload.get("aorActualTechAmount")),
+        "aor_unclaimed_crew_count": normalize_count_text(payload.get("aorUnclaimedCrewCount")),
+        "aor_unclaimed_crew_amount": normalize_amount_text(payload.get("aorUnclaimedCrewAmount")),
+        "aor_unclaimed_tech_count": normalize_count_text(payload.get("aorUnclaimedTechCount")),
+        "aor_unclaimed_tech_amount": normalize_amount_text(payload.get("aorUnclaimedTechAmount")),
+        "cost_remark": str(payload.get("costRemark", "")).strip(),
+    }
+
+    existing = db.execute("""
+        SELECT id
+        FROM vessel_management_costs
+        WHERE vessel_id = ? AND cost_year = ?
+        LIMIT 1
+    """, (vessel_id, cost_year)).fetchone()
+
+    if existing:
+        set_clause = ", ".join([f"{k} = ?" for k in fields.keys()])
+        values = list(fields.values()) + [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), existing["id"]]
+        db.execute(
+            f"UPDATE vessel_management_costs SET {set_clause}, updated_at = ? WHERE id = ?",
+            values
+        )
+    else:
+        columns = ["vessel_id", "cost_year"] + list(fields.keys()) + ["updated_at"]
+        placeholders = ", ".join(["?"] * len(columns))
+        values = [vessel_id, cost_year] + list(fields.values()) + [datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+        db.execute(
+            f"INSERT INTO vessel_management_costs ({', '.join(columns)}) VALUES ({placeholders})",
+            values
+        )
+
+
 def remove_old_report_file_if_needed(vessel: dict[str, Any], report_key: str) -> None:
     old_name = str(vessel.get(report_key, "")).strip()
     if not old_name:
@@ -651,70 +772,16 @@ def remove_old_report_file_if_needed(vessel: dict[str, Any], report_key: str) ->
             pass
 
 
-def build_report_flags(vessels: list[dict[str, Any]]) -> dict[str, bool]:
-    def has_any_value(key: str) -> bool:
-        return any(str(v.get(key, "")).strip() for v in vessels)
-
-    flags: dict[str, bool] = {
-        "show_management_company": has_any_value("management_company"),
-        "show_operation_manager": has_any_value("operation_manager"),
-        "show_owner_supervisor": has_any_value("owner_supervisor"),
-        "show_vessel_type": has_any_value("vessel_type"),
-        "show_delivery_date": has_any_value("delivery_date"),
-        "show_next_dry_dock": has_any_value("next_dry_dock"),
-        "show_voyage_plan": has_any_value("voyage_plan"),
-        "show_builder": has_any_value("builder"),
-        "show_size": has_any_value("size"),
-        "show_cargo_status": has_any_value("cargo_status"),
-        "show_condition_report": (
-            has_any_value("condition_report_type")
-            or has_any_value("condition_report_date")
-            or has_any_value("condition_report_status")
-            or has_any_value("condition_report_findings")
-            or has_any_value("condition_report_open_findings")
-            or has_any_value("condition_report_remark")
-        ),
-    }
-
-    for i in range(1, 16):
-        flags[f"show_issue_{i}"] = has_any_value(f"issue_{i}")
-
-    for i in range(1, 11):
-        flags[f"show_coc_{i}"] = (
-            has_any_value(f"coc_type_{i}")
-            or has_any_value(f"coc_summary_{i}")
-            or has_any_value(f"coc_due_date_{i}")
-        )
-
-    for i in range(1, 4):
-        flags[f"show_sire_{i}"] = (
-            has_any_value(f"sire_type_{i}")
-            or has_any_value(f"sire_date_{i}")
-            or has_any_value(f"sire_status_{i}")
-            or has_any_value(f"sire_findings_{i}")
-            or has_any_value(f"sire_open_findings_{i}")
-            or has_any_value(f"sire_remark_{i}")
-        )
-
-    return flags
-
-
-
 def is_coc_due_within_1_month(value: Any) -> bool:
     text = str(value or "").strip()
     if not text:
         return False
-
     try:
         due = datetime.strptime(text[:10], "%Y-%m-%d")
     except Exception:
         return False
-
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    one_month_later = today.replace() + (due - due)  # dummy to satisfy linter
-    from datetime import timedelta
     one_month_later = today + timedelta(days=30)
-
     return today <= due <= one_month_later
 
 
@@ -726,20 +793,7 @@ def has_any_coc_due(vessel: dict[str, Any]) -> bool:
 
 
 def is_due_within_1_month(value: Any) -> bool:
-    text = str(value or "").strip()
-    if not text:
-        return False
-
-    try:
-        due = datetime.strptime(text[:10], "%Y-%m-%d")
-    except Exception:
-        return False
-
-    from datetime import timedelta
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    one_month_later = today + timedelta(days=30)
-
-    return today <= due <= one_month_later
+    return is_coc_due_within_1_month(value)
 
 
 def has_sire_in_progress(vessel: dict[str, Any]) -> bool:
@@ -758,60 +812,133 @@ def has_critical_issue(vessel: dict[str, Any]) -> bool:
     return False
 
 
-def is_dry_dock_due_within_6_months(value: Any) -> bool:
-    text = str(value or "").strip()
-    if not text:
-        return False
-
-    try:
-        due = datetime.strptime(text[:10], "%Y-%m-%d")
-    except Exception:
-        return False
-
-    from datetime import timedelta
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    six_months_later = today + timedelta(days=183)
-
-    return today <= due <= six_months_later
-
-
 def apply_filter_to_vessels(vessels: list[dict[str, Any]], filter_name: str) -> list[dict[str, Any]]:
     filter_name = str(filter_name or "all").strip().lower()
 
     if filter_name == "vlcc":
         return [v for v in vessels if str(v.get("size", "")).strip().upper() == "VLCC"]
-
     if filter_name == "sireprogress":
         return [v for v in vessels if has_sire_in_progress(v)]
-
     if filter_name == "trmt1":
         return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT1"]
-
     if filter_name == "trmt2":
         return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT2"]
-
     if filter_name == "cmt2":
         return [v for v in vessels if str(v.get("team_name", "")).strip() == "TRMT3 & CMT2"]
-
-
     if filter_name == "son":
         return [v for v in vessels if str(v.get("owner_supervisor", "")).strip() == "손유석 감독"]
-
     if filter_name == "kim":
         return [v for v in vessels if str(v.get("owner_supervisor", "")).strip() == "김흥민 감독"]
-
     if filter_name == "lee":
         return [v for v in vessels if str(v.get("owner_supervisor", "")).strip() == "이창주 감독"]
-
-
     if filter_name == "coc":
         return [v for v in vessels if has_any_coc_due(v)]
-
     if filter_name == "critical":
         return [v for v in vessels if has_critical_issue(v)]
-
     return vessels
 
+
+def get_management_cost_report_rows(filter_name: str, selected_year: str) -> list[dict[str, Any]]:
+    db = get_db()
+
+    base_rows = get_all_vessels()
+    filtered_vessels = apply_filter_to_vessels(base_rows, filter_name)
+    allowed_ids = {v["id"] for v in filtered_vessels if "id" in v}
+
+    query = """
+        SELECT
+            v.id AS vessel_id,
+            v.name,
+            v.management_company,
+            v.owner_supervisor,
+            c.cost_year,
+            c.opex_contract_crew_amount,
+            c.opex_contract_tech_amount,
+            c.opex_actual_crew_count,
+            c.opex_actual_crew_amount,
+            c.opex_actual_tech_count,
+            c.opex_actual_tech_amount,
+            c.aor_actual_crew_count,
+            c.aor_actual_crew_amount,
+            c.aor_actual_tech_count,
+            c.aor_actual_tech_amount,
+            c.aor_unclaimed_crew_count,
+            c.aor_unclaimed_crew_amount,
+            c.aor_unclaimed_tech_count,
+            c.aor_unclaimed_tech_amount,
+            c.cost_remark
+        FROM vessel_management_costs c
+        JOIN vessels v ON v.id = c.vessel_id
+    """
+    params: list[Any] = []
+
+    if selected_year:
+        query += " WHERE c.cost_year = ?"
+        params.append(selected_year)
+
+    query += " ORDER BY v.name COLLATE NOCASE ASC, c.cost_year ASC"
+
+    rows = db.execute(query, params).fetchall()
+    result = [dict(row) for row in rows]
+
+    if allowed_ids:
+        result = [row for row in result if row["vessel_id"] in allowed_ids]
+    else:
+        result = []
+
+    return result
+
+def enrich_management_cost_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    enriched = []
+
+    for row in rows:
+        new_row = dict(row)
+
+        new_row["opex_actual_crew_display"] = format_count_amount(
+            row.get("opex_actual_crew_count"), row.get("opex_actual_crew_amount")
+        )
+        new_row["opex_actual_tech_display"] = format_count_amount(
+            row.get("opex_actual_tech_count"), row.get("opex_actual_tech_amount")
+        )
+        new_row["aor_actual_crew_display"] = format_count_amount(
+            row.get("aor_actual_crew_count"), row.get("aor_actual_crew_amount")
+        )
+        new_row["aor_actual_tech_display"] = format_count_amount(
+            row.get("aor_actual_tech_count"), row.get("aor_actual_tech_amount")
+        )
+        new_row["aor_unclaimed_crew_display"] = format_count_amount(
+            row.get("aor_unclaimed_crew_count"), row.get("aor_unclaimed_crew_amount")
+        )
+        new_row["aor_unclaimed_tech_display"] = format_count_amount(
+            row.get("aor_unclaimed_tech_count"), row.get("aor_unclaimed_tech_amount")
+        )
+
+        total_amount = (
+            parse_money(row.get("opex_actual_crew_amount"))
+            + parse_money(row.get("opex_actual_tech_amount"))
+            + parse_money(row.get("aor_actual_crew_amount"))
+            + parse_money(row.get("aor_actual_tech_amount"))
+            + parse_money(row.get("aor_unclaimed_crew_amount"))
+            + parse_money(row.get("aor_unclaimed_tech_amount"))
+        )
+        new_row["total_amount_display"] = format_money(total_amount)
+
+        enriched.append(new_row)
+
+    return enriched
+
+
+def format_usd(value):
+    if value in (None, '', 0, '0'):
+        return ''
+    try:
+        num = float(str(value).replace('$', '').replace(',', '').strip())
+        if num.is_integer():
+            return f"$ {int(num):,}"
+        return f"$ {num:,.2f}"
+    except Exception:
+        return str(value)
+    
 
 
 @app.after_request
@@ -873,218 +1000,6 @@ def report_page():
         current_filter=filter_name,
     )
 
-@app.route("/api/vessels", methods=["GET"])
-def api_get_vessels():
-    return no_cache_json(get_all_vessels())
-
-
-@app.route("/api/vessel", methods=["POST"])
-def api_save_single_vessel():
-    payload = request.get_json(silent=True) or {}
-
-    name = str(payload.get("name", "")).strip()
-    original_name = str(payload.get("_originalName", "")).strip()
-
-    if not name:
-        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
-
-    vessel_type = normalize_vessel_type(payload.get("vesselType"))
-    management_company = str(payload.get("managementCompany", "")).strip()
-    management_supervisor = str(payload.get("managementSupervisor", "")).strip()
-    operation_manager = str(payload.get("operationManager", "")).strip()
-
-    owner_supervisor = str(payload.get("ownerSupervisor", "")).strip()
-
-    team_name = str(payload.get("teamName", "")).strip()
-    if team_name and team_name not in VALID_TEAM_NAMES:
-        team_name = ""
-
-    builder = str(payload.get("builder", "")).strip()
-    size = str(payload.get("size", "")).strip()
-    delivery_date = str(payload.get("deliveryDate", "")).strip()
-    next_dry_dock = str(payload.get("nextDryDock", "")).strip()
-    voyage_plan = str(payload.get("voyagePlan", "")).strip()
-
-    cargo_status = normalize_cargo_status(payload.get("cargoStatus"))
-    if vessel_type == "Container":
-        cargo_status = ""
-
-    latitude = safe_float(payload.get("latitude"))
-    longitude = safe_float(payload.get("longitude"))
-
-    fields: dict[str, Any] = {
-        "name": name,
-        "vessel_type": vessel_type,
-        "management_company": management_company,
-        "management_supervisor": management_supervisor,
-        "operation_manager": operation_manager,
-        "owner_supervisor": owner_supervisor,
-        "team_name": team_name,
-        "builder": builder,
-        "size": size,
-        "delivery_date": delivery_date,
-        "next_dry_dock": next_dry_dock,
-        "voyage_plan": voyage_plan,
-        "cargo_status": cargo_status,
-    }
-
-    for i in range(1, 16):
-        fields[f"issue_{i}"] = str(payload.get(f"issue{i}", "")).strip()
-        fields[f"issue_{i}_critical"] = 1 if payload.get(f"issue{i}Critical") else 0
-
-    for i in range(1, 11):
-        fields[f"coc_type_{i}"] = str(payload.get(f"cocType{i}", "")).strip()
-        fields[f"coc_summary_{i}"] = str(payload.get(f"cocSummary{i}", "")).strip()
-        fields[f"coc_due_date_{i}"] = str(payload.get(f"cocDueDate{i}", "")).strip()
-
-    for i in range(1, 6):
-        if i > SIRE_COUNT or vessel_type == "Container":
-            fields[f"sire_type_{i}"] = ""
-            fields[f"sire_date_{i}"] = ""
-            fields[f"sire_status_{i}"] = ""
-            fields[f"sire_findings_{i}"] = ""
-            fields[f"sire_open_findings_{i}"] = ""
-            fields[f"sire_remark_{i}"] = ""
-        else:
-            fields[f"sire_type_{i}"] = str(payload.get(f"sireType{i}", "")).strip()
-            fields[f"sire_date_{i}"] = str(payload.get(f"sireDate{i}", "")).strip()
-            fields[f"sire_status_{i}"] = normalize_sire_status(payload.get(f"sireStatus{i}"))
-            fields[f"sire_findings_{i}"] = str(payload.get(f"sireFindings{i}", "")).strip()
-            fields[f"sire_open_findings_{i}"] = str(payload.get(f"sireOpenFindings{i}", "")).strip()
-            fields[f"sire_remark_{i}"] = str(payload.get(f"sireRemark{i}", "")).strip()
-
-    fields["condition_report_type"] = str(payload.get("conditionReportType", "")).strip()
-    fields["condition_report_date"] = str(payload.get("conditionReportDate", "")).strip()
-    fields["condition_report_status"] = normalize_sire_status(payload.get("conditionReportStatus"))
-    fields["condition_report_findings"] = str(payload.get("conditionReportFindings", "")).strip()
-    fields["condition_report_open_findings"] = str(payload.get("conditionReportOpenFindings", "")).strip()
-    fields["condition_report_remark"] = str(payload.get("conditionReportRemark", "")).strip()
-    
-
-    db = get_db()
-    search_name = original_name if original_name else name
-    existing = db.execute("""
-        SELECT *
-        FROM vessels
-        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
-        LIMIT 1
-    """, (search_name,)).fetchone()
-
-    if existing:
-        existing_dict = dict(existing)
-        if latitude is None:
-            latitude = existing_dict["latitude"]
-        if longitude is None:
-            longitude = existing_dict["longitude"]
-
-        fields["latitude"] = latitude
-        fields["longitude"] = longitude
-        fields["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        set_clause = ", ".join([f"{key} = ?" for key in fields.keys()])
-        values = list(fields.values()) + [existing_dict["id"]]
-
-        db.execute(
-            f"UPDATE vessels SET {set_clause} WHERE id = ?",
-            values,
-        )
-    else:
-        fields["latitude"] = latitude
-        fields["longitude"] = longitude
-
-        columns = list(fields.keys())
-        placeholders = ", ".join(["?"] * len(columns))
-        column_sql = ", ".join(columns)
-
-        db.execute(
-            f"INSERT INTO vessels ({column_sql}) VALUES ({placeholders})",
-            [fields[col] for col in columns],
-        )
-
-    db.commit()
-    return no_cache_json({"success": True, "message": "저장되었습니다."})
-
-
-@app.route("/api/vessel/delete", methods=["POST"])
-def api_delete_single_vessel():
-    payload = request.get_json(silent=True) or {}
-    name = str(payload.get("name", "")).strip()
-    password = str(payload.get("password", "")).strip()
-
-    if not name:
-        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
-
-    if password != DELETE_PASSWORD:
-        return no_cache_json({"success": False, "message": "비밀번호가 올바르지 않습니다."}, 403)
-
-    db = get_db()
-    existing = db.execute("""
-        SELECT id
-        FROM vessels
-        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
-        LIMIT 1
-    """, (name,)).fetchone()
-
-    if not existing:
-        return no_cache_json({"success": False, "message": "선박을 찾을 수 없습니다."}, 404)
-
-    db.execute("DELETE FROM vessels WHERE id = ?", (existing["id"],))
-    db.commit()
-    return no_cache_json({"success": True, "message": "삭제되었습니다."})
-
-
-@app.route("/api/upload-report", methods=["POST"])
-def api_upload_report():
-    vessel_name = str(request.form.get("vesselName", "")).strip()
-    report_key = str(request.form.get("reportKey", "")).strip()
-    file = request.files.get("file")
-
-    if not vessel_name:
-        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
-
-    if report_key not in VALID_REPORT_KEYS:
-        return no_cache_json({"success": False, "message": "유효하지 않은 Report 항목입니다."}, 400)
-
-    if not file or not file.filename:
-        return no_cache_json({"success": False, "message": "업로드할 파일이 없습니다."}, 400)
-
-    if not allowed_file(file.filename, ALLOWED_REPORT_EXTENSIONS):
-        return no_cache_json({"success": False, "message": "허용되지 않는 파일 형식입니다."}, 400)
-
-    db = get_db()
-    row = db.execute("""
-        SELECT *
-        FROM vessels
-        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
-        LIMIT 1
-    """, (vessel_name,)).fetchone()
-
-    if not row:
-        return no_cache_json({"success": False, "message": "선박을 찾을 수 없습니다."}, 404)
-
-    vessel = dict(row)
-    ext = file.filename.rsplit(".", 1)[1].lower()
-    safe_name = secure_filename(vessel_name.replace(" ", "_"))
-    stored_name = f"{safe_name}_{report_key}.{ext}"
-
-    remove_old_report_file_if_needed(vessel, report_key)
-
-    save_path = REPORT_UPLOAD_DIR / stored_name
-    file.save(save_path)
-
-    db.execute(
-        f"UPDATE vessels SET {report_key} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (stored_name, vessel["id"]),
-    )
-    db.commit()
-
-    return no_cache_json({
-        "success": True,
-        "message": "Report 업로드 완료",
-        "filename": stored_name,
-        "reportKey": report_key,
-    })
-
 
 @app.route("/coc-report")
 def coc_report():
@@ -1107,7 +1022,6 @@ def coc_report():
 
             if coc_type or coc_summary or coc_due_date:
                 has_coc = True
-
                 due_soon = is_due_within_1_month(coc_due_date)
                 if due_soon:
                     due_soon_vessel_names.add(vessel.get("name", ""))
@@ -1137,6 +1051,7 @@ def coc_report():
         report_rows=report_rows,
         current_filter=filter_name,
     )
+
 
 @app.route("/sire-report")
 def sire_report_page():
@@ -1233,6 +1148,335 @@ def condition_report_page():
     )
 
 
+@app.route("/management-cost-report")
+def management_cost_report_page():
+    filter_name = request.args.get("filter", "all")
+    selected_year = str(request.args.get("year", "")).strip()
+    selected_range = str(request.args.get("range", "전체")).strip()
+    selected_view = str(request.args.get("view", "전체")).strip()
+
+    if selected_range not in {"전체", "OPEX", "AOR"}:
+        selected_range = "전체"
+
+    if selected_view not in {"전체", "Crew", "Tech"}:
+        selected_view = "전체"
+
+    base_vessels = get_all_vessels()
+    filtered_vessels = apply_filter_to_vessels(base_vessels, filter_name)
+    report_rows = get_management_cost_report_rows(filter_name, selected_year)
+    report_rows = enrich_management_cost_rows(report_rows)
+
+    return render_template(
+        "management_cost_report.html",
+        version=get_version(),
+        total_count=len(filtered_vessels),
+        report_count=len(report_rows),
+        selected_year=selected_year,
+        selected_range=selected_range,
+        selected_view=selected_view,
+        current_filter=filter_name,
+        report_rows=report_rows,
+        format_usd=format_usd,
+    )
+
+
+@app.route("/api/vessels", methods=["GET"])
+def api_get_vessels():
+    current_year = datetime.now().strftime("%Y")
+
+    db = get_db()
+    rows = db.execute(
+        """
+        SELECT
+            v.*,
+            COALESCE(NULLIF(mc.opex_contract_crew_amount, ''), 0) AS mc_opex_contract_crew_amount,
+            COALESCE(NULLIF(mc.opex_contract_tech_amount, ''), 0) AS mc_opex_contract_tech_amount,
+            COALESCE(NULLIF(mc.opex_actual_crew_count, ''), 0) AS mc_opex_actual_crew_count,
+            COALESCE(NULLIF(mc.opex_actual_crew_amount, ''), 0) AS mc_opex_actual_crew_amount,
+            COALESCE(NULLIF(mc.opex_actual_tech_count, ''), 0) AS mc_opex_actual_tech_count,
+            COALESCE(NULLIF(mc.opex_actual_tech_amount, ''), 0) AS mc_opex_actual_tech_amount,
+            COALESCE(NULLIF(mc.aor_actual_crew_count, ''), 0) AS mc_aor_actual_crew_count,
+            COALESCE(NULLIF(mc.aor_actual_crew_amount, ''), 0) AS mc_aor_actual_crew_amount,
+            COALESCE(NULLIF(mc.aor_actual_tech_count, ''), 0) AS mc_aor_actual_tech_count,
+            COALESCE(NULLIF(mc.aor_actual_tech_amount, ''), 0) AS mc_aor_actual_tech_amount,
+            COALESCE(NULLIF(mc.aor_unclaimed_crew_count, ''), 0) AS mc_aor_unclaimed_crew_count,
+            COALESCE(NULLIF(mc.aor_unclaimed_crew_amount, ''), 0) AS mc_aor_unclaimed_crew_amount,
+            COALESCE(NULLIF(mc.aor_unclaimed_tech_count, ''), 0) AS mc_aor_unclaimed_tech_count,
+            COALESCE(NULLIF(mc.aor_unclaimed_tech_amount, ''), 0) AS mc_aor_unclaimed_tech_amount,
+            COALESCE(mc.cost_remark, '') AS mc_cost_remark,
+            COALESCE(mc.cost_year, '') AS mc_cost_year
+        FROM vessels v
+        LEFT JOIN vessel_management_costs mc
+        ON mc.vessel_id = v.id
+        AND mc.cost_year = ?
+        ORDER BY v.name
+        """,
+        (current_year,)
+    ).fetchall()
+
+
+    return no_cache_json([dict(row) for row in rows])
+
+
+@app.route("/api/vessel/cost", methods=["GET"])
+def api_get_vessel_cost():
+    vessel_name = str(request.args.get("name", "")).strip()
+    cost_year = str(request.args.get("year", "")).strip()
+
+    if not vessel_name:
+        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
+    if not cost_year:
+        return no_cache_json({"success": False, "message": "년도가 필요합니다."}, 400)
+
+    db = get_db()
+    vessel = db.execute("""
+        SELECT id
+        FROM vessels
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
+        LIMIT 1
+    """, (vessel_name,)).fetchone()
+
+    if not vessel:
+        return no_cache_json({"success": False, "message": "선박을 찾을 수 없습니다."}, 404)
+
+    cost_row = get_management_cost_by_vessel_and_year(vessel["id"], cost_year)
+
+    return no_cache_json({
+        "success": True,
+        "year": cost_year,
+        "data": cost_row or {},
+    })
+
+
+@app.route("/api/vessel", methods=["POST"])
+def api_save_single_vessel():
+    payload = request.get_json(silent=True) or {}
+
+    name = str(payload.get("name", "")).strip()
+    original_name = str(payload.get("_originalName", "")).strip()
+
+    if not name:
+        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
+
+    vessel_type = normalize_vessel_type(payload.get("vesselType"))
+    management_company = str(payload.get("managementCompany", "")).strip()
+    management_supervisor = str(payload.get("managementSupervisor", "")).strip()
+    operation_manager = str(payload.get("operationManager", "")).strip()
+    owner_supervisor = str(payload.get("ownerSupervisor", "")).strip()
+
+    team_name = str(payload.get("teamName", "")).strip()
+    if team_name and team_name not in VALID_TEAM_NAMES:
+        team_name = ""
+
+    builder = str(payload.get("builder", "")).strip()
+    size = str(payload.get("size", "")).strip()
+    delivery_date = str(payload.get("deliveryDate", "")).strip()
+    next_dry_dock = str(payload.get("nextDryDock", "")).strip()
+    voyage_plan = str(payload.get("voyagePlan", "")).strip()
+
+    cargo_status = normalize_cargo_status(payload.get("cargoStatus"))
+    if vessel_type == "Container":
+        cargo_status = ""
+
+    latitude = safe_float(payload.get("latitude"))
+    longitude = safe_float(payload.get("longitude"))
+
+    fields: dict[str, Any] = {
+        "name": name,
+        "vessel_type": vessel_type,
+        "management_company": management_company,
+        "management_supervisor": management_supervisor,
+        "operation_manager": operation_manager,
+        "owner_supervisor": owner_supervisor,
+        "team_name": team_name,
+        "builder": builder,
+        "size": size,
+        "delivery_date": delivery_date,
+        "next_dry_dock": next_dry_dock,
+        "voyage_plan": voyage_plan,
+        "cargo_status": cargo_status,
+    }
+
+    for i in range(1, 16):
+        fields[f"issue_{i}"] = str(payload.get(f"issue{i}", "")).strip()
+        fields[f"issue_{i}_critical"] = 1 if payload.get(f"issue{i}Critical") else 0
+
+    for i in range(1, 11):
+        fields[f"coc_type_{i}"] = str(payload.get(f"cocType{i}", "")).strip()
+        fields[f"coc_summary_{i}"] = str(payload.get(f"cocSummary{i}", "")).strip()
+        fields[f"coc_due_date_{i}"] = str(payload.get(f"cocDueDate{i}", "")).strip()
+
+    for i in range(1, 6):
+        if i > SIRE_COUNT or vessel_type == "Container":
+            fields[f"sire_type_{i}"] = ""
+            fields[f"sire_date_{i}"] = ""
+            fields[f"sire_status_{i}"] = ""
+            fields[f"sire_findings_{i}"] = ""
+            fields[f"sire_open_findings_{i}"] = ""
+            fields[f"sire_remark_{i}"] = ""
+        else:
+            fields[f"sire_type_{i}"] = str(payload.get(f"sireType{i}", "")).strip()
+            fields[f"sire_date_{i}"] = str(payload.get(f"sireDate{i}", "")).strip()
+            fields[f"sire_status_{i}"] = normalize_sire_status(payload.get(f"sireStatus{i}"))
+            fields[f"sire_findings_{i}"] = str(payload.get(f"sireFindings{i}", "")).strip()
+            fields[f"sire_open_findings_{i}"] = str(payload.get(f"sireOpenFindings{i}", "")).strip()
+            fields[f"sire_remark_{i}"] = str(payload.get(f"sireRemark{i}", "")).strip()
+
+    fields["condition_report_type"] = str(payload.get("conditionReportType", "")).strip()
+    fields["condition_report_date"] = str(payload.get("conditionReportDate", "")).strip()
+    fields["condition_report_status"] = normalize_sire_status(payload.get("conditionReportStatus"))
+    fields["condition_report_findings"] = str(payload.get("conditionReportFindings", "")).strip()
+    fields["condition_report_open_findings"] = str(payload.get("conditionReportOpenFindings", "")).strip()
+    fields["condition_report_remark"] = str(payload.get("conditionReportRemark", "")).strip()
+
+    db = get_db()
+    search_name = original_name if original_name else name
+    existing = db.execute("""
+        SELECT *
+        FROM vessels
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
+        LIMIT 1
+    """, (search_name,)).fetchone()
+
+    if existing:
+        existing_dict = dict(existing)
+        if latitude is None:
+            latitude = existing_dict["latitude"]
+        if longitude is None:
+            longitude = existing_dict["longitude"]
+
+        fields["latitude"] = latitude
+        fields["longitude"] = longitude
+        fields["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        set_clause = ", ".join([f"{key} = ?" for key in fields.keys()])
+        values = list(fields.values()) + [existing_dict["id"]]
+
+        db.execute(f"UPDATE vessels SET {set_clause} WHERE id = ?", values)
+        vessel_id = existing_dict["id"]
+    else:
+        fields["latitude"] = latitude
+        fields["longitude"] = longitude
+
+        columns = list(fields.keys())
+        placeholders = ", ".join(["?"] * len(columns))
+        column_sql = ", ".join(columns)
+
+        cursor = db.execute(
+            f"INSERT INTO vessels ({column_sql}) VALUES ({placeholders})",
+            [fields[col] for col in columns],
+        )
+        vessel_id = cursor.lastrowid
+
+    cost_year = str(payload.get("opexContractYear", "")).strip()
+
+    has_cost_input = any([
+        str(payload.get("opexContractCrewAmount", "")).strip(),
+        str(payload.get("opexContractTechAmount", "")).strip(),
+        str(payload.get("opexActualCrewCount", "")).strip(),
+        str(payload.get("opexActualCrewAmount", "")).strip(),
+        str(payload.get("opexActualTechCount", "")).strip(),
+        str(payload.get("opexActualTechAmount", "")).strip(),
+        str(payload.get("aorActualCrewCount", "")).strip(), 
+        str(payload.get("aorActualCrewAmount", "")).strip(),
+        str(payload.get("aorActualTechCount", "")).strip(),
+        str(payload.get("aorActualTechAmount", "")).strip(),
+        str(payload.get("aorUnclaimedCrewCount", "")).strip(),
+        str(payload.get("aorUnclaimedCrewAmount", "")).strip(),
+        str(payload.get("aorUnclaimedTechCount", "")).strip(),
+        str(payload.get("aorUnclaimedTechAmount", "")).strip(),
+        str(payload.get("costRemark", "")).strip(),
+    ])
+
+    try:
+        db.execute(f"UPDATE vessels SET {set_clause} WHERE id = ?", values)
+
+        if cost_year and has_cost_input:
+            save_management_cost(vessel_id, cost_year, payload)
+
+        db.commit()
+        return no_cache_json({"success": True, "message": "저장되었습니다."})
+    except Exception as e:
+        db.rollback()
+        return no_cache_json({"success": False, "message": f"저장 실패: {e}"}, 500)
+
+@app.route("/api/vessel/delete", methods=["POST"])
+def api_delete_single_vessel():
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name", "")).strip()
+    password = str(payload.get("password", "")).strip()
+
+    if not name:
+        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
+    if password != DELETE_PASSWORD:
+        return no_cache_json({"success": False, "message": "비밀번호가 올바르지 않습니다."}, 403)
+
+    db = get_db()
+    existing = db.execute("""
+        SELECT id
+        FROM vessels
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
+        LIMIT 1
+    """, (name,)).fetchone()
+
+    if not existing:
+        return no_cache_json({"success": False, "message": "선박을 찾을 수 없습니다."}, 404)
+
+    vessel_id = existing["id"]
+    db.execute("DELETE FROM vessel_management_costs WHERE vessel_id = ?", (vessel_id,))
+    db.execute("DELETE FROM vessels WHERE id = ?", (vessel_id,))
+    db.commit()
+    return no_cache_json({"success": True, "message": "삭제되었습니다."})
+
+
+@app.route("/api/upload-report", methods=["POST"])
+def api_upload_report():
+    vessel_name = str(request.form.get("vesselName", "")).strip()
+    report_key = str(request.form.get("reportKey", "")).strip()
+    file = request.files.get("file")
+
+    if not vessel_name:
+        return no_cache_json({"success": False, "message": "선박명이 필요합니다."}, 400)
+    if report_key not in VALID_REPORT_KEYS:
+        return no_cache_json({"success": False, "message": "유효하지 않은 Report 항목입니다."}, 400)
+    if not file or not file.filename:
+        return no_cache_json({"success": False, "message": "업로드할 파일이 없습니다."}, 400)
+    if not allowed_file(file.filename, ALLOWED_REPORT_EXTENSIONS):
+        return no_cache_json({"success": False, "message": "허용되지 않는 파일 형식입니다."}, 400)
+
+    db = get_db()
+    row = db.execute("""
+        SELECT *
+        FROM vessels
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
+        LIMIT 1
+    """, (vessel_name,)).fetchone()
+
+    if not row:
+        return no_cache_json({"success": False, "message": "선박을 찾을 수 없습니다."}, 404)
+
+    vessel = dict(row)
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    safe_name = secure_filename(vessel_name.replace(" ", "_"))
+    stored_name = f"{safe_name}_{report_key}.{ext}"
+
+    remove_old_report_file_if_needed(vessel, report_key)
+
+    save_path = REPORT_UPLOAD_DIR / stored_name
+    file.save(save_path)
+
+    db.execute(
+        f"UPDATE vessels SET {report_key} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (stored_name, vessel["id"]),
+    )
+    db.commit()
+
+    return no_cache_json({
+        "success": True,
+        "message": "Report 업로드 완료",
+        "filename": stored_name,
+        "reportKey": report_key,
+    })
 
 
 @app.route("/api/upload-positions", methods=["POST"])
@@ -1263,7 +1507,6 @@ def api_upload_positions():
         success_name_set = set()
 
         for normalized_name, row in latest_by_name.items():
-            # DB에 없는 선박은 완전히 무시
             existing = db_name_map.get(normalized_name)
             if not existing:
                 continue
@@ -1271,10 +1514,8 @@ def api_upload_positions():
             lat = row.get("latitude")
             lon = row.get("longitude")
 
-            # 좌표가 비정상이면 업데이트하지 않음
             if lat is None or lon is None:
                 continue
-
             if not (-90 <= float(lat) <= 90 and -180 <= float(lon) <= 180):
                 continue
 
@@ -1311,7 +1552,164 @@ def api_upload_positions():
         return no_cache_json({"success": False, "message": f"엑셀 처리 실패: {e}"}, 500)
 
 
+@app.route("/api/upload-management-costs", methods=["POST"])
+def upload_management_costs():
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return no_cache_json({
+            "success": False,
+            "message": "업로드할 파일이 없습니다."
+        }, 400)
 
+    filename = str(file.filename).lower()
+    if not filename.endswith(".xlsx"):
+        return no_cache_json({
+            "success": False,
+            "message": "xlsx 파일만 업로드 가능합니다."
+        }, 400)
+
+    temp_path = DATA_DIR / "_temp_management_cost_upload.xlsx"
+
+    try:
+        file.save(temp_path)
+
+        aggregated = aggregate_management_cost_excel(temp_path)
+
+        db = get_db()
+        vessel_rows = db.execute("""
+            SELECT id, name
+            FROM vessels
+        """).fetchall()
+
+        vessel_map = {
+            str(row["name"]).strip().upper(): row["id"]
+            for row in vessel_rows
+            if str(row["name"]).strip()
+        }
+
+        updated_count = 0
+        failed_vessels: list[str] = []
+
+        for vessel_name, year_map in aggregated.items():
+            vessel_id = vessel_map.get(str(vessel_name).strip().upper())
+
+            if not vessel_id:
+                failed_vessels.append(vessel_name)
+                continue
+
+            vessel_updated = False
+
+            for cost_year, data in year_map.items():
+                existing = db.execute("""
+                    SELECT id
+                    FROM vessel_management_costs
+                    WHERE vessel_id = ? AND cost_year = ?
+                    LIMIT 1
+                """, (vessel_id, cost_year)).fetchone()
+
+                values = (
+                    str(data.get("opex_actual_crew_count", 0) or 0),
+                    str(int(round(float(data.get("opex_actual_crew_amount", 0) or 0)))),
+                    str(data.get("opex_actual_tech_count", 0) or 0),
+                    str(int(round(float(data.get("opex_actual_tech_amount", 0) or 0)))),
+                    str(data.get("aor_actual_crew_count", 0) or 0),
+                    str(int(round(float(data.get("aor_actual_crew_amount", 0) or 0)))),
+                    str(data.get("aor_actual_tech_count", 0) or 0),
+                    str(int(round(float(data.get("aor_actual_tech_amount", 0) or 0)))),
+                    str(data.get("aor_unclaimed_crew_count", 0) or 0),
+                    str(int(round(float(data.get("aor_unclaimed_crew_amount", 0) or 0)))),
+                    str(data.get("aor_unclaimed_tech_count", 0) or 0),
+                    str(int(round(float(data.get("aor_unclaimed_tech_amount", 0) or 0)))),
+                )
+
+                if existing:
+                    db.execute("""
+                        UPDATE vessel_management_costs
+                        SET
+                            opex_actual_crew_count = ?,
+                            opex_actual_crew_amount = ?,
+                            opex_actual_tech_count = ?,
+                            opex_actual_tech_amount = ?,
+                            aor_actual_crew_count = ?,
+                            aor_actual_crew_amount = ?,
+                            aor_actual_tech_count = ?,
+                            aor_actual_tech_amount = ?,
+                            aor_unclaimed_crew_count = ?,
+                            aor_unclaimed_crew_amount = ?,
+                            aor_unclaimed_tech_count = ?,
+                            aor_unclaimed_tech_amount = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE vessel_id = ? AND cost_year = ?
+                    """, values + (vessel_id, cost_year))
+                else:
+                    db.execute("""
+                        INSERT INTO vessel_management_costs (
+                            vessel_id,
+                            cost_year,
+                            opex_contract_crew_amount,
+                            opex_contract_tech_amount,
+                            opex_actual_crew_count,
+                            opex_actual_crew_amount,
+                            opex_actual_tech_count,
+                            opex_actual_tech_amount,
+                            aor_actual_crew_count,
+                            aor_actual_crew_amount,
+                            aor_actual_tech_count,
+                            aor_actual_tech_amount,
+                            aor_unclaimed_crew_count,
+                            aor_unclaimed_crew_amount,
+                            aor_unclaimed_tech_count,
+                            aor_unclaimed_tech_amount,
+                            cost_remark,
+                            updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """, (
+                        vessel_id,
+                        str(cost_year).strip(),
+                        "",   # opex_contract_crew_amount 유지용 기본값
+                        "",   # opex_contract_tech_amount 유지용 기본값
+                        values[0],
+                        values[1],
+                        values[2],
+                        values[3],
+                        values[4],
+                        values[5],
+                        values[6],
+                        values[7],
+                        values[8],
+                        values[9],
+                        values[10],
+                        values[11],
+                        "",   # cost_remark 기본값
+                    ))
+
+                vessel_updated = True
+
+            if vessel_updated:
+                updated_count += 1
+
+        db.commit()
+
+        return no_cache_json({
+            "success": True,
+            "message": "관리사 비용 업로드가 완료되었습니다.",
+            "updated_count": updated_count,
+            "failed_count": len(failed_vessels),
+            "failed_vessels": failed_vessels,
+        })
+
+    except Exception as e:
+        return no_cache_json({
+            "success": False,
+            "message": f"관리사 비용 업로드 중 오류가 발생했습니다: {e}"
+        }, 500)
+
+    finally:
+        try:
+            if temp_path.exists():
+                temp_path.unlink()
+        except Exception:
+            pass
 
 
 @app.route("/uploads/reports/<path:filename>")
@@ -1331,4 +1729,4 @@ def file_too_large(_error):
 init_db()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True, use_reloader=False)

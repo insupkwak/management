@@ -62,10 +62,21 @@
           <td>{{ vessel.owner_supervisor }}</td>
           <td>{{ vessel.vessel_type }}</td>
           <td>{{ vessel.condition_report_type }}</td>
-          <td>{{ vessel.condition_report_date }}</td>
-          <td>{{ vessel.condition_report_status }}</td>
-          <td>{{ vessel.condition_report_findings }}</td>
-          <td>{{ vessel.condition_report_open_findings }}</td>
+<td class="date-cell">
+  {{ vessel.condition_report_date }}
+</td>
+
+<td class="status-cell">
+  {{ vessel.condition_report_status }}
+</td>
+
+<td class="count-cell">
+  {{ vessel.condition_report_findings }}
+</td>
+
+<td class="count-cell open">
+  {{ vessel.condition_report_open_findings }}
+</td>
           <td class="condition-remark-cell">{{ vessel.condition_report_remark }}</td>
         </tr>
         {% endfor %}
@@ -75,6 +86,7 @@
         </tr>
       {% endif %}
     </tbody>
+    
   </table>
 </div>
 

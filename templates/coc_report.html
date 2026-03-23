@@ -38,37 +38,47 @@
 </div>
 
     <div class="report-table-wrap">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>선박명</th>
-            <th>Type</th>
-            <th>관리사</th>
-            <th>선주감독</th>
-            <th>No.</th>
-            <th>증서종류</th>
-            <th>요약</th>
-            <th>Due Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in report_rows %}
-          <tr>
-            <td class="left strong">{{ row.name }}</td>
-            <td>{{ row.vessel_type }}</td>
-            <td class="left">{{ row.management_company }}</td>
-            <td>{{ row.owner_supervisor }}</td>
-            <td>{{ row.coc_no }}</td>
-            <td class="left">{{ row.coc_type }}</td>
-            <td class="left">{{ row.coc_summary }}</td>
-            <td class="due-date-cell {% if row.is_due_soon %}due-red{% endif %}">
-             {{ row.coc_due_date }}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <table class="report-table coc-report-table">
+  <colgroup>
+    <col class="col-name">
+    <col class="col-type">
+    <col class="col-mgmt">
+    <col class="col-owner">
+    <col class="col-no">
+    <col class="col-cert">
+    <col class="col-summary">
+    <col class="col-due">
+  </colgroup>
+    <thead>
+      <tr>
+        <th class="coc-name-col">선박명</th>
+        <th>Type</th>
+        <th>관리사</th>
+        <th>선주감독</th>
+        <th>No.</th>
+        <th>증서종류</th>
+        <th class="coc-summary-col">요약</th>
+        <th class="coc-due-col">Due Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report_rows %}
+      <tr>
+        <td class="left strong coc-name-cell">{{ row.name }}</td>
+        <td>{{ row.vessel_type }}</td>
+        <td class="left">{{ row.management_company }}</td>
+        <td>{{ row.owner_supervisor }}</td>
+        <td>{{ row.coc_no }}</td>
+        <td class="left">{{ row.coc_type }}</td>
+        <td class="left coc-summary-cell">{{ row.coc_summary }}</td>
+        <td class="due-date-cell coc-due-cell {% if row.is_due_soon %}due-red{% endif %}">
+          {{ row.coc_due_date }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
   </div>
 </body>
 </html>

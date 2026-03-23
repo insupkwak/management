@@ -58,6 +58,18 @@ const cargoStatusWrap = document.getElementById('cargoStatusWrap');
 const cocSection = document.getElementById('cocSection');
 const sireSection = document.getElementById('sireSection');
 
+const managementCostReportBtn = document.getElementById('managementCostReportBtn');
+
+const costReportModal = document.getElementById('costReportModal');
+const costReportYear = document.getElementById('costReportYear');
+const costReportRange = document.getElementById('costReportRange');
+const costReportView = document.getElementById('costReportView');
+const costReportConfirmBtn = document.getElementById('costReportConfirmBtn');
+const costReportCancelBtn = document.getElementById('costReportCancelBtn');
+
+const managementCostUploadBtn = document.getElementById('managementCostUploadBtn');
+const managementCostExcelInput = document.getElementById('managementCostExcelInput');
+
 const COC_COUNT = 10;
 const SIRE_COUNT = 3;
 
@@ -136,7 +148,27 @@ if (customAlert) {
   });
 }
 
+function showCostReportModal() {
+  if (!costReportModal) return;
 
+  const currentYear = String(new Date().getFullYear());
+  if (costReportYear) {
+    const hasOption = Array.from(costReportYear.options).some(opt => opt.value === currentYear);
+    if (hasOption) {
+      costReportYear.value = currentYear;
+    }
+  }
+
+  if (costReportRange) costReportRange.value = '전체';
+  if (costReportView) costReportView.value = '전체';
+
+  costReportModal.classList.remove('hidden');
+}
+
+function hideCostReportModal() {
+  if (!costReportModal) return;
+  costReportModal.classList.add('hidden');
+}
 
 function shipNameHtml(name) {
   return `<div class="ship-name-text">${escapeHtml(name)}</div>`;
@@ -150,6 +182,76 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+
+function bindMoneyInputs() {
+  const ids = [
+    'opexContractCrewAmount',
+    'opexContractTechAmount',
+    'opexActualCrewAmount',
+    'opexActualTechAmount',
+    'aorActualCrewAmount',
+    'aorActualTechAmount',
+    'aorUnclaimedCrewAmount',
+    'aorUnclaimedTechAmount'
+  ];
+
+  ids.forEach((id) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+      const caretAtEnd = input.selectionStart === input.value.length;
+      input.value = formatMoneyInputValue(input.value);
+      if (caretAtEnd) {
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      input.value = formatMoneyInputValue(input.value);
+    });
+  });
+}
+
+function formatMoneyInputValue(value) {
+  const raw = String(value ?? '').replace(/[^0-9.]/g, '').trim();
+  if (!raw) return '';
+
+  const parts = raw.split('.');
+  const intPart = parts[0] || '0';
+  const decimalPart = parts.length > 1 ? `.${parts[1]}` : '';
+
+  const withComma = Number(intPart).toLocaleString('en-US');
+  return `$ ${withComma}${decimalPart}`;
+}
+
+
+function formatUsd(value) {
+  const num = Number(value || 0);
+  return '$ ' + num.toLocaleString();
+}
+
+function getTechAorDisplayData(vessel) {
+  const claimedCount = Number(vessel.mc_aor_actual_tech_count || 0);
+  const claimedAmount = Number(vessel.mc_aor_actual_tech_amount || 0);
+
+  const unclaimedCount = Number(vessel.mc_aor_unclaimed_tech_count || 0);
+  const unclaimedAmount = Number(vessel.mc_aor_unclaimed_tech_amount || 0);
+
+  return {
+    claimedCount,
+    claimedAmount,
+    unclaimedCount,
+    unclaimedAmount
+  };
+}
+
+
+function normalizeMoneyForSave(value) {
+  return String(value ?? '').replace(/\$/g, '').replace(/,/g, '').trim();
+}
+
 
 function hasText(value) {
   return String(value ?? '').trim() !== '';
@@ -228,12 +330,14 @@ function updateVesselTypeUI() {
 
   cocSection?.classList.remove('hidden-block');
 
+  const sireSectionWrap = document.getElementById('sireSectionWrap');
+
   if (type === 'Container') {
     cargoStatusWrap?.classList.add('hidden-block');
-    sireSection?.classList.add('hidden-block');
+    sireSectionWrap?.classList.add('hidden-block');
   } else {
     cargoStatusWrap?.classList.remove('hidden-block');
-    sireSection?.classList.remove('hidden-block');
+    sireSectionWrap?.classList.remove('hidden-block');
   }
 }
 
@@ -616,6 +720,7 @@ function makeReportsBlock(index, vessel) {
 function makeLabelHtml(vessel, index) {
   const cls = getVesselColor(vessel);
   const type = normalizeVesselType(vessel.vessel_type);
+  const techAor = getTechAorDisplayData(vessel);
 
   return `
     <div class="map-label ${cls}" data-index="${index}">
@@ -667,8 +772,35 @@ function makeLabelHtml(vessel, index) {
         <div class="section-title">Condition Report</div>
         ${makeConditionReportLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
       </div>
+      
 
       <div class="section-divider"></div>
+
+
+
+
+ <div class="label-section">
+  <div class="section-title">Tech AOR 현황</div>
+
+  <div class="aor-summary-row">
+    <div class="aor-summary-label">AOR 비용 청구</div>
+    <div class="aor-summary-count">${techAor.claimedCount}건</div>
+    <div class="aor-summary-amount">${formatUsd(techAor.claimedAmount)}</div>
+  </div>
+
+  <div class="aor-summary-row">
+    <div class="aor-summary-label">AOR 비용 미청구</div>
+    <div class="aor-summary-count">${techAor.unclaimedCount}건</div>
+    <div class="aor-summary-amount">${formatUsd(techAor.unclaimedAmount)}</div>
+  </div>
+</div>
+
+
+
+
+
+      <div class="section-divider"></div>
+
 
       <div class="label-section">
         <div class="section-title">Reports</div>
@@ -820,6 +952,9 @@ async function loadData(options = {}) {
     }
 
     vessels = await response.json();
+
+
+
 
     if (!Array.isArray(vessels)) {
       vessels = [];
@@ -991,7 +1126,18 @@ async function uploadReportFile(index, reportKey, file) {
   }
 }
 
+function initAccordion() {
+  const sections = document.querySelectorAll('.accordion-section');
 
+  sections.forEach((section) => {
+    const toggle = section.querySelector('.accordion-toggle');
+    if (!toggle) return;
+
+    toggle.addEventListener('click', () => {
+      section.classList.toggle('open');
+    });
+  });
+}
 
 async function uploadPositionExcel(file) {
   const formData = new FormData();
@@ -1411,6 +1557,9 @@ function resetForm() {
   document.getElementById('conditionReportOpenFindings').value = '';
   document.getElementById('conditionReportRemark').value = '';
 
+
+  resetManagementCostFields(false);
+
   editIndex = null;
   activeLabelIndex = null;
   labelMode = 'none';
@@ -1434,8 +1583,102 @@ function resetForm() {
 }
 
 
+function resetManagementCostFields(keepYear = true) {
+  const currentYear = document.getElementById('opexContractYear')?.value || '';
+
+  document.getElementById('opexContractCrewAmount').value = '';
+  document.getElementById('opexContractTechAmount').value = '';
+
+  document.getElementById('opexActualCrewCount').value = '';
+  document.getElementById('opexActualCrewAmount').value = '';
+  document.getElementById('opexActualTechCount').value = '';
+  document.getElementById('opexActualTechAmount').value = '';
+
+  document.getElementById('aorActualCrewCount').value = '';
+  document.getElementById('aorActualCrewAmount').value = '';
+  document.getElementById('aorActualTechCount').value = '';
+  document.getElementById('aorActualTechAmount').value = '';
+
+  document.getElementById('aorUnclaimedCrewCount').value = '';
+  document.getElementById('aorUnclaimedCrewAmount').value = '';
+  document.getElementById('aorUnclaimedTechCount').value = '';
+  document.getElementById('aorUnclaimedTechAmount').value = '';
+
+  document.getElementById('costRemark').value = '';
+
+  if (keepYear) {
+    document.getElementById('opexContractYear').value = currentYear;
+  }
+}
+
+function fillManagementCostFields(cost = {}) {
+  document.getElementById('opexContractCrewAmount').value = formatMoneyInputValue(cost.opex_contract_crew_amount || '');
+  document.getElementById('opexContractTechAmount').value = formatMoneyInputValue(cost.opex_contract_tech_amount || '');
+
+  document.getElementById('opexActualCrewCount').value = cost.opex_actual_crew_count || '';
+  document.getElementById('opexActualCrewAmount').value = formatMoneyInputValue(cost.opex_actual_crew_amount || '');
+  document.getElementById('opexActualTechCount').value = cost.opex_actual_tech_count || '';
+  document.getElementById('opexActualTechAmount').value = formatMoneyInputValue(cost.opex_actual_tech_amount || '');
+
+  document.getElementById('aorActualCrewCount').value = cost.aor_actual_crew_count || '';
+  document.getElementById('aorActualCrewAmount').value = formatMoneyInputValue(cost.aor_actual_crew_amount || '');
+  document.getElementById('aorActualTechCount').value = cost.aor_actual_tech_count || '';
+  document.getElementById('aorActualTechAmount').value = formatMoneyInputValue(cost.aor_actual_tech_amount || '');
+
+  document.getElementById('aorUnclaimedCrewCount').value = cost.aor_unclaimed_crew_count || '';
+  document.getElementById('aorUnclaimedCrewAmount').value = formatMoneyInputValue(cost.aor_unclaimed_crew_amount || '');
+  document.getElementById('aorUnclaimedTechCount').value = cost.aor_unclaimed_tech_count || '';
+  document.getElementById('aorUnclaimedTechAmount').value = formatMoneyInputValue(cost.aor_unclaimed_tech_amount || '');
+
+  document.getElementById('costRemark').value = cost.cost_remark || '';
+}
+
+async function loadManagementCostByYear() {
+  const yearEl = document.getElementById('opexContractYear');
+  const vesselNameEl = document.getElementById('vesselName');
+
+  if (!yearEl || !vesselNameEl) return;
+
+  const year = yearEl.value.trim();
+  const vesselName = vesselNameEl.value.trim();
+
+  resetManagementCostFields(true);
+
+  if (!year || !vesselName) return;
+
+  try {
+    const response = await fetch(
+      `/api/vessel/cost?name=${encodeURIComponent(vesselName)}&year=${encodeURIComponent(year)}&_=${Date.now()}`,
+      {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      return;
+    }
+
+    fillManagementCostFields(result.data || {});
+  } catch (error) {
+    console.error('관리사 비용 조회 실패:', error);
+  }
+}
 
 
+const opexContractYear = document.getElementById('opexContractYear');
+
+if (opexContractYear) {
+  opexContractYear.addEventListener('change', () => {
+    loadManagementCostByYear();
+  });
+}
 
 function setFilter(filterName) {
   currentFilter = filterName;
@@ -1500,6 +1743,47 @@ function renderSearchSuggestions(keyword) {
   });
 
   shipSearchDropdown.classList.add('show');
+}
+
+
+async function uploadManagementCostExcel(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch(`/api/upload-management-costs?_=${Date.now()}`, {
+      method: 'POST',
+      cache: 'no-store',
+      body: formData,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      alert(result.message || '관리사 비용 업로드에 실패했습니다.');
+      return;
+    }
+
+    const updated = result.updated_count || 0;
+    const failed = result.failed_count || 0;
+    const failedList = result.failed_vessels || [];
+
+    let msg = `관리사 비용 업로드 완료\n\n업데이트 성공 : ${updated}척\n업데이트 실패 : ${failed}척`;
+
+    if (failedList.length) {
+      msg += `\n\n실패 선박 List\n[${failedList.join(', ')}]`;
+    }
+
+    alert(msg);
+    await loadData({ preserveSelection: true, preserveZoom: true });
+  } catch (error) {
+    console.error(error);
+    alert('관리사 비용 업로드 중 오류가 발생했습니다.');
+  }
 }
 
 if (toggleAllLabelsBtn) {
@@ -1613,6 +1897,14 @@ if (conditionReportBtn) {
 }
 
 
+/* 여기에 추가 */
+if (managementCostReportBtn) {
+  managementCostReportBtn.addEventListener('click', () => {
+    showCostReportModal();
+  });
+}
+
+
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -1698,6 +1990,27 @@ if (form) {
     vessel.conditionReportOpenFindings = document.getElementById('conditionReportOpenFindings')?.value || '';
     vessel.conditionReportRemark = document.getElementById('conditionReportRemark')?.value || '';
 
+
+vessel.opexContractCrewAmount = normalizeMoneyForSave(document.getElementById('opexContractCrewAmount')?.value || '');
+vessel.opexContractTechAmount = normalizeMoneyForSave(document.getElementById('opexContractTechAmount')?.value || '');
+vessel.opexContractYear = document.getElementById('opexContractYear')?.value || '';
+vessel.costRemark = document.getElementById('costRemark')?.value.trim() || '';
+
+vessel.opexActualCrewCount = document.getElementById('opexActualCrewCount')?.value || '';
+vessel.opexActualCrewAmount = normalizeMoneyForSave(document.getElementById('opexActualCrewAmount')?.value || '');
+vessel.opexActualTechCount = document.getElementById('opexActualTechCount')?.value || '';
+vessel.opexActualTechAmount = normalizeMoneyForSave(document.getElementById('opexActualTechAmount')?.value || '');
+
+vessel.aorActualCrewCount = document.getElementById('aorActualCrewCount')?.value || '';
+vessel.aorActualCrewAmount = normalizeMoneyForSave(document.getElementById('aorActualCrewAmount')?.value || '');
+vessel.aorActualTechCount = document.getElementById('aorActualTechCount')?.value || '';
+vessel.aorActualTechAmount = normalizeMoneyForSave(document.getElementById('aorActualTechAmount')?.value || '');
+
+vessel.aorUnclaimedCrewCount = document.getElementById('aorUnclaimedCrewCount')?.value || '';
+vessel.aorUnclaimedCrewAmount = normalizeMoneyForSave(document.getElementById('aorUnclaimedCrewAmount')?.value || '');
+vessel.aorUnclaimedTechCount = document.getElementById('aorUnclaimedTechCount')?.value || '';
+vessel.aorUnclaimedTechAmount = normalizeMoneyForSave(document.getElementById('aorUnclaimedTechAmount')?.value || '');
+
 if (currentVesselType === 'Container') {
   vessel.cargoStatus = '';
 
@@ -1746,9 +2059,61 @@ if (currentVesselType === 'Container') {
   });
 }
 
+if (costReportCancelBtn) {
+  costReportCancelBtn.addEventListener('click', () => {
+    hideCostReportModal();
+  });
+}
+
+if (costReportConfirmBtn) {
+  costReportConfirmBtn.addEventListener('click', () => {
+    const selectedYear = costReportYear?.value || '';
+    const selectedRange = costReportRange?.value || '전체';
+    const selectedView = costReportView?.value || '전체';
+
+    if (!selectedYear) {
+      alert('년도를 선택해주세요.');
+      return;
+    }
+
+    hideCostReportModal();
+
+    window.open(
+      `/management-cost-report?filter=${encodeURIComponent(currentFilter)}&year=${encodeURIComponent(selectedYear)}&range=${encodeURIComponent(selectedRange)}&view=${encodeURIComponent(selectedView)}&_=${Date.now()}`,
+      '_blank'
+    );
+  });
+}
+
+if (costReportModal) {
+  costReportModal.addEventListener('click', (e) => {
+    if (e.target === costReportModal) {
+      hideCostReportModal();
+    }
+  });
+}
+
+
 if (resetBtn) {
   resetBtn.addEventListener('click', () => {
     resetForm();
+  });
+}
+
+if (managementCostUploadBtn && managementCostExcelInput) {
+  managementCostUploadBtn.addEventListener('click', () => {
+    managementCostExcelInput.click();
+  });
+
+  managementCostExcelInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await uploadManagementCostExcel(file);
+    } finally {
+      managementCostExcelInput.value = '';
+    }
   });
 }
 
@@ -1809,11 +2174,27 @@ function fillFormByVessel(index) {
   document.getElementById('conditionReportOpenFindings').value = vessel.condition_report_open_findings || '';
   document.getElementById('conditionReportRemark').value = vessel.condition_report_remark || '';
 
+  const yearEl = document.getElementById('opexContractYear');
+  if (yearEl && !yearEl.value) {
+    yearEl.value = String(new Date().getFullYear());
+  }
+
+  resetManagementCostFields(true);
+
   document.getElementById('latitude').value = vessel.latitude ?? '';
   document.getElementById('longitude').value = vessel.longitude ?? '';
 
   editIndex = index;
   updateVesselTypeUI();
+
+  const selectedYear = document.getElementById('opexContractYear')?.value || '';
+  if (selectedYear) {
+    loadManagementCostByYear();
+  } else {
+    resetManagementCostFields(true);
+  }
+
+
 }
 
 window.editVessel = function (index) {
@@ -1889,6 +2270,11 @@ setInterval(() => {
   }
 }, 600000);
 
+
+
+
 setupDateInputs();
+bindMoneyInputs();
 updateVesselTypeUI();
+initAccordion();
 loadData({ preserveSelection: true, fitBounds: true });

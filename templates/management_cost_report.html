@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리사 비용 Report</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+</head>
+<body class="report-page-body">
+  <div class="report-page report-page-wide">
+    <div class="report-header">
+      <div>
+        <h1>관리사 비용 Report</h1>
+        <div class="report-subtitle">선택 조건 기준 관리사 비용 현황</div>
+      </div>
+
+      <div class="report-actions">
+        <button class="report-action-btn" onclick="window.print()">인쇄</button>
+        <button class="report-action-btn secondary" onclick="window.close()">닫기</button>
+      </div>
+    </div>
+
+    <div class="report-summary-grid report-summary-grid-wide">
+      <div class="report-summary-card report-summary-card-main">
+        <div class="label">전체 등록 선박</div>
+        <div class="value">{{ total_count }}</div>
+      </div>
+
+      <div class="report-summary-card good">
+        <div class="label">출력 조건</div>
+        <div class="value">{{ selected_year }} / {{ selected_range }} / {{ selected_view }}</div>
+      </div>
+
+      <div class="report-summary-card warning">
+        <div class="label">출력 선박 수</div>
+        <div class="value">{{ report_count }}</div>
+      </div>
+    </div>
+
+    <div class="report-table-wrap">
+  
+  
+  
+  <table class="report-table management-cost-report-table">
+  {% set show_opex_crew = (selected_range in ["전체", "OPEX"]) and (selected_view in ["전체", "Crew"]) %}
+  {% set show_opex_tech = (selected_range in ["전체", "OPEX"]) and (selected_view in ["전체", "Tech"]) %}
+  {% set show_aor_crew = (selected_range in ["전체", "AOR"]) and (selected_view in ["전체", "Crew"]) %}
+  {% set show_aor_tech = (selected_range in ["전체", "AOR"]) and (selected_view in ["전체", "Tech"]) %}
+  {% set show_unclaimed_aor_crew = (selected_range in ["전체", "AOR"]) and (selected_view in ["전체", "Crew"]) %}
+  {% set show_unclaimed_aor_tech = (selected_range in ["전체", "AOR"]) and (selected_view in ["전체", "Tech"]) %}
+
+  <thead>
+    <tr>
+      <th class="col-name">선박명</th>
+      <th class="col-normal">관리사</th>
+      <th class="col-normal">선주감독</th>
+
+      {% if show_opex_crew %}
+        <th class="col-normal">Opex Crew</th>
+      {% endif %}
+      {% if show_opex_tech %}
+        <th class="col-normal">Opex Tech</th>
+      {% endif %}
+      {% if show_aor_crew %}
+        <th class="col-normal">AOR Crew</th>
+      {% endif %}
+      {% if show_aor_tech %}
+        <th class="col-normal">AOR Tech</th>
+      {% endif %}
+      {% if show_unclaimed_aor_crew %}
+        <th class="col-normal">미청구 AOR Crew</th>
+      {% endif %}
+      {% if show_unclaimed_aor_tech %}
+        <th class="col-normal">미청구 AOR Tech</th>
+      {% endif %}
+
+      <th class="col-normal col-amount">총액</th>
+      <th class="col-remark">Remark</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% if report_rows %}
+      {% for row in report_rows %}
+      <tr>
+        <td class="left strong cell-name">{{ row.name }}</td>
+        <td>{{ row.management_company }}</td>
+        <td>{{ row.owner_supervisor }}</td>
+
+        {% if show_opex_crew %}
+          <td>
+            <div class="cost-cell">
+              <span class="cost-left">[{{ row.opex_actual_crew_count }}건]</span>
+              <span class="cost-right">{{ format_usd(row.opex_actual_crew_amount) }}</span>
+            </div>
+          </td>
+        {% endif %}
+
+        {% if show_opex_tech %}
+          <td>
+            <div class="cost-cell">
+              <span class="cost-left">[{{ row.opex_actual_tech_count }}건]</span>
+              <span class="cost-right">{{ format_usd(row.opex_actual_tech_amount) }}</span>
+            </div>
+          </td>
+        {% endif %}
+
+        {% if show_aor_crew %}
+          <td>
+            <div class="cost-cell">
+              <span class="cost-left">[{{ row.aor_actual_crew_count }}건]</span>
+              <span class="cost-right">{{ format_usd(row.aor_actual_crew_amount) }}</span>
+            </div>
+          </td>
+        {% endif %}
+
+        {% if show_aor_tech %}
+          <td>
+            <div class="cost-cell">
+              <span class="cost-left">[{{ row.aor_actual_tech_count }}건]</span>
+              <span class="cost-right">{{ format_usd(row.aor_actual_tech_amount) }}</span>
+            </div>
+          </td>
+        {% endif %}
+
+        {% if show_unclaimed_aor_crew %}
+          <td>
+            <div class="cost-cell">
+              <span class="cost-left">[{{ row.aor_unclaimed_crew_count }}건]</span>
+              <span class="cost-right">{{ format_usd(row.aor_unclaimed_crew_amount) }}</span>
+            </div>
+          </td>
+        {% endif %}
+
+        {% if show_unclaimed_aor_tech %}
+          <td>
+            <div class="cost-cell">
+              <span class="cost-left">[{{ row.aor_unclaimed_tech_count }}건]</span>
+              <span class="cost-right">{{ format_usd(row.aor_unclaimed_tech_amount) }}</span>
+            </div>
+          </td>
+        {% endif %}
+
+        <td class="amount-cell">{{ format_usd(row.total_amount_display) }}</td>
+        <td class="remark-cell">{{ row.cost_remark }}</td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="20" style="text-align:center;">데이터가 없습니다.</td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>
+</div>
+  </div>
+</body>
+</html>
