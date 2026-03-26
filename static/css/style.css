@@ -1638,3 +1638,67 @@ button:hover {
 .footer:hover {
   opacity: 1;
 }
+
+
+.report-external-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.report-link-btn {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.report-link-btn:hover {
+  background: var(--primary-hover);
+}
+
+/* 담당감독업무 링크 버튼 */
+.report-external-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* 버튼 스타일 */
+.report-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 44px;
+  border-radius: 10px;
+
+  background: #374151;
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: all 0.2s ease;
+}
+
+/* hover */
+.report-link-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  opacity: 0.95;
+}
+
+/* 클릭 느낌 */
+.report-link-btn:active {
+  transform: scale(0.97);
+}
