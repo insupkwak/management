@@ -232,6 +232,13 @@
         height: auto;
       }
     }
+
+/* 입력된 값 강조 */
+.drydock-input.filled {
+  color: #1d4ed8;   /* 글자만 파랑 */
+  font-weight: 600;
+}
+
   </style>
 
   <script>
@@ -303,6 +310,30 @@
         alert('저장 중 오류가 발생했습니다.');
       }
     });
+
+function updateFilledState(el) {
+  if (!el) return;
+
+  const hasValue = el.value && el.value.trim() !== "";
+
+  if (hasValue) {
+    el.classList.add("filled");
+  } else {
+    el.classList.remove("filled");
+  }
+}
+
+// 개별 input에 직접 이벤트 연결 (더 안정적)
+document.querySelectorAll(".drydock-input").forEach((input) => {
+  input.addEventListener("input", () => updateFilledState(input));
+  input.addEventListener("change", () => updateFilledState(input)); // date 대응
+});
+
+// 최초 로딩
+window.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".drydock-input").forEach(updateFilledState);
+});
+
   </script>
 </body>
 </html>
