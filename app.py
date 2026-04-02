@@ -1516,68 +1516,108 @@ def api_save_single_vessel():
         LIMIT 1
     """, (search_name,)).fetchone()
 
+    old_next_dry_dock = ""
     if existing:
-        existing_dict = dict(existing)
-        if latitude is None:
-            latitude = existing_dict["latitude"]
-        if longitude is None:
-            longitude = existing_dict["longitude"]
-
-        fields["latitude"] = latitude
-        fields["longitude"] = longitude
-        fields["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        set_clause = ", ".join([f"{key} = ?" for key in fields.keys()])
-        values = list(fields.values()) + [existing_dict["id"]]
-
-        db.execute(f"UPDATE vessels SET {set_clause} WHERE id = ?", values)
-        vessel_id = existing_dict["id"]
-    else:
-        fields["latitude"] = latitude
-        fields["longitude"] = longitude
-
-        columns = list(fields.keys())
-        placeholders = ", ".join(["?"] * len(columns))
-        column_sql = ", ".join(columns)
-
-        cursor = db.execute(
-            f"INSERT INTO vessels ({column_sql}) VALUES ({placeholders})",
-            [fields[col] for col in columns],
-        )
-        vessel_id = cursor.lastrowid
-
-    cost_year = str(payload.get("opexContractYear", "")).strip()
-
-    has_cost_input = any([
-        str(payload.get("opexContractCrewAmount", "")).strip(),
-        str(payload.get("opexContractTechAmount", "")).strip(),
-        str(payload.get("opexActualCrewCount", "")).strip(),
-        str(payload.get("opexActualCrewAmount", "")).strip(),
-        str(payload.get("opexActualTechCount", "")).strip(),
-        str(payload.get("opexActualTechAmount", "")).strip(),
-        str(payload.get("aorActualCrewCount", "")).strip(), 
-        str(payload.get("aorActualCrewAmount", "")).strip(),
-        str(payload.get("aorActualTechCount", "")).strip(),
-        str(payload.get("aorActualTechAmount", "")).strip(),
-        str(payload.get("aorUnclaimedCrewCount", "")).strip(),
-        str(payload.get("aorUnclaimedCrewAmount", "")).strip(),
-        str(payload.get("aorUnclaimedTechCount", "")).strip(),
-        str(payload.get("aorUnclaimedTechAmount", "")).strip(),
-        str(payload.get("costRemark", "")).strip(),
-    ])
+        old_next_dry_dock = str(existing["next_dry_dock"] or "").strip()
 
     try:
-        db.execute(f"UPDATE vessels SET {set_clause} WHERE id = ?", values)
+        if existing:
+            existing_dict = dict(existing)
+
+            if latitude is None:
+                latitude = existing_dict["latitude"]
+            if longitude is None:
+                longitude = existing_dict["longitude"]
+
+            fields["latitude"] = latitude
+            fields["longitude"] = longitude
+            fields["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            set_clause = ", ".join([f"{key} = ?" for key in fields.keys()])
+            values = list(fields.values()) + [existing_dict["id"]]
+
+            db.execute(f"UPDATE vessels SET {set_clause} WHERE id = ?", values)
+            vessel_id = existing_dict["id"]
+
+        else:
+            fields["latitude"] = latitude
+            fields["longitude"] = longitude
+
+            columns = list(fields.keys())
+            placeholders = ", ".join(["?"] * len(columns))
+            column_sql = ", ".join(columns)
+
+            cursor = db.execute(
+                f"INSERT INTO vessels ({column_sql}) VALUES ({placeholders})",
+                [fields[col] for col in columns],
+            )
+            vessel_id = cursor.lastrowid
+
+        if old_next_dry_dock != next_dry_dock:
+            drydock_existing = db.execute("""
+                SELECT id
+                FROM vessel_drydock_reports
+                WHERE vessel_id = ?
+                LIMIT 1
+            """, (vessel_id,)).fetchone()
+
+            if drydock_existing:
+                db.execute("""
+                    UPDATE vessel_drydock_reports
+                    SET
+                        target_date = ?,
+                        kind_of_survey = '',
+                        drydock_place = '',
+                        budget = '',
+                        duration_days = '',
+                        remark = '',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE vessel_id = ?
+                """, (next_dry_dock, vessel_id))
+            else:
+                db.execute("""
+                    INSERT INTO vessel_drydock_reports (
+                        vessel_id,
+                        target_date,
+                        kind_of_survey,
+                        drydock_place,
+                        budget,
+                        duration_days,
+                        remark,
+                        updated_at
+                    ) VALUES (?, ?, '', '', '', '', '', CURRENT_TIMESTAMP)
+                """, (vessel_id, next_dry_dock))
+
+        cost_year = str(payload.get("opexContractYear", "")).strip()
+
+        has_cost_input = any([
+            str(payload.get("opexContractCrewAmount", "")).strip(),
+            str(payload.get("opexContractTechAmount", "")).strip(),
+            str(payload.get("opexActualCrewCount", "")).strip(),
+            str(payload.get("opexActualCrewAmount", "")).strip(),
+            str(payload.get("opexActualTechCount", "")).strip(),
+            str(payload.get("opexActualTechAmount", "")).strip(),
+            str(payload.get("aorActualCrewCount", "")).strip(),
+            str(payload.get("aorActualCrewAmount", "")).strip(),
+            str(payload.get("aorActualTechCount", "")).strip(),
+            str(payload.get("aorActualTechAmount", "")).strip(),
+            str(payload.get("aorUnclaimedCrewCount", "")).strip(),
+            str(payload.get("aorUnclaimedCrewAmount", "")).strip(),
+            str(payload.get("aorUnclaimedTechCount", "")).strip(),
+            str(payload.get("aorUnclaimedTechAmount", "")).strip(),
+            str(payload.get("costRemark", "")).strip(),
+        ])
 
         if cost_year and has_cost_input:
             save_management_cost(vessel_id, cost_year, payload)
 
         db.commit()
         return no_cache_json({"success": True, "message": "저장되었습니다."})
+
     except Exception as e:
         db.rollback()
         return no_cache_json({"success": False, "message": f"저장 실패: {e}"}, 500)
-
+    
 @app.route("/api/vessel/delete", methods=["POST"])
 def api_delete_single_vessel():
     payload = request.get_json(silent=True) or {}
