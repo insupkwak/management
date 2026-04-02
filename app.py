@@ -162,6 +162,25 @@ def ensure_management_cost_table(conn: sqlite3.Connection) -> None:
     """)
 
 
+def ensure_drydock_report_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vessel_drydock_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vessel_id INTEGER NOT NULL UNIQUE,
+            target_date TEXT NOT NULL DEFAULT '',
+            kind_of_survey TEXT NOT NULL DEFAULT '',
+            drydock_place TEXT NOT NULL DEFAULT '',
+            budget TEXT NOT NULL DEFAULT '',
+            duration_days TEXT NOT NULL DEFAULT '',
+            remark TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON DELETE CASCADE
+        )
+    """)
+
+
+
+
 def init_db() -> None:
     ensure_dirs()
     conn = sqlite3.connect(DB_PATH, timeout=30)
@@ -175,6 +194,7 @@ def init_db() -> None:
             conn.executescript(schema_sql)
         ensure_vessel_columns(conn)
         ensure_management_cost_table(conn)
+        ensure_drydock_report_table(conn)
         conn.commit()
     finally:
         conn.close()
@@ -838,6 +858,127 @@ def apply_filter_to_vessels(vessels: list[dict[str, Any]], filter_name: str) -> 
     return vessels
 
 
+def parse_date_safe(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+
+    patterns = [
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y/%m/%d %H:%M",
+    ]
+    for fmt in patterns:
+        try:
+            return datetime.strptime(text, fmt)
+        except Exception:
+            continue
+    return None
+
+
+def get_drydock_status_class(next_dry_dock: Any) -> str:
+    due = parse_date_safe(next_dry_dock)
+    if not due:
+        return ""
+
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    six_months = today + timedelta(days=183)
+    one_year = today + timedelta(days=365)
+
+    if due <= six_months:
+        return "due-red"
+    if due <= one_year:
+        return "due-blue"
+    return ""
+
+
+def get_drydock_report_rows(filter_name: str) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    db = get_db()
+
+    vessels = get_all_vessels()
+    vessels = apply_filter_to_vessels(vessels, filter_name)
+
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    six_months = today + timedelta(days=183)
+    one_year = today + timedelta(days=365)
+
+    rows = []
+    within_6m = 0
+    within_1y = 0
+
+    for vessel in vessels:
+        due = parse_date_safe(vessel.get("next_dry_dock"))
+        if due:
+            if due <= six_months:
+                within_6m += 1
+            if due <= one_year:
+                within_1y += 1
+
+        report_row = db.execute("""
+            SELECT
+                target_date,
+                kind_of_survey,
+                drydock_place,
+                budget,
+                duration_days,
+                remark
+            FROM vessel_drydock_reports
+            WHERE vessel_id = ?
+            LIMIT 1
+        """, (vessel["id"],)).fetchone()
+
+        next_dd = vessel.get("next_dry_dock", "") or ""
+
+        row = {
+            "vessel_id": vessel["id"],
+            "name": vessel.get("name", ""),
+            "size": vessel.get("size", ""),
+            "management_company": vessel.get("management_company", ""),
+            "owner_supervisor": vessel.get("owner_supervisor", ""),
+            "next_dry_dock": vessel.get("next_dry_dock", ""),
+            "next_dry_dock_class": get_drydock_status_class(vessel.get("next_dry_dock")),
+
+            # 🔥 기본값 = Next Dry Dock
+            "target_date": next_dd,
+
+            "kind_of_survey": "",
+            "drydock_place": "",
+            "budget": "",
+            "duration_days": "",
+            "remark": "",
+            
+        }
+
+        if report_row:
+            row["target_date"] = report_row["target_date"] or  next_dd
+            row["kind_of_survey"] = report_row["kind_of_survey"] or ""
+            row["drydock_place"] = report_row["drydock_place"] or ""
+            row["budget"] = report_row["budget"] or ""
+            row["duration_days"] = report_row["duration_days"] or ""
+            row["remark"] = report_row["remark"] or ""
+
+        target_dt = parse_date_safe(row["target_date"])
+        next_dt = parse_date_safe(next_dd)
+        row["_sort_date"] = target_dt or next_dt or datetime.max
+
+        rows.append(row)
+
+    rows.sort(key=lambda x: (x["_sort_date"], str(x["name"]).lower()))
+    for row in rows:
+        row.pop("_sort_date", None)
+
+    kpis = {
+        "total_count": len(vessels),
+        "within_6m_count": within_6m,
+        "within_1y_count": within_1y,
+    }
+
+    return rows, kpis
+
+
 def get_management_cost_report_rows(filter_name: str, selected_year: str) -> list[dict[str, Any]]:
     db = get_db()
 
@@ -1198,6 +1339,24 @@ def management_cost_report_page():
         format_usd=format_usd,
     )
 
+@app.route("/drydock-report")
+def drydock_report_page():
+    filter_name = request.args.get("filter", "all")
+
+    report_rows, kpis = get_drydock_report_rows(filter_name)
+
+    return render_template(
+        "drydock_report.html",
+        version=get_version(),
+        current_filter=filter_name,
+        report_rows=report_rows,
+        total_count=kpis["total_count"],
+        within_6m_count=kpis["within_6m_count"],
+        within_1y_count=kpis["within_1y_count"],
+    )
+
+
+
 
 @app.route("/api/vessels", methods=["GET"])
 def api_get_vessels():
@@ -1446,6 +1605,87 @@ def api_delete_single_vessel():
     db.execute("DELETE FROM vessels WHERE id = ?", (vessel_id,))
     db.commit()
     return no_cache_json({"success": True, "message": "삭제되었습니다."})
+
+
+
+@app.route("/api/drydock-report/save", methods=["POST"])
+def api_save_drydock_report():
+    payload = request.get_json(silent=True) or {}
+    rows = payload.get("rows", [])
+
+    if not isinstance(rows, list):
+        return no_cache_json({"success": False, "message": "저장 데이터 형식이 올바르지 않습니다."}, 400)
+
+    db = get_db()
+
+    try:
+        for row in rows:
+            vessel_id = row.get("vessel_id")
+            if not vessel_id:
+                continue
+
+            target_date = str(row.get("target_date", "")).strip()
+            kind_of_survey = str(row.get("kind_of_survey", "")).strip()
+            drydock_place = str(row.get("drydock_place", "")).strip()
+            budget = normalize_amount_text(row.get("budget", ""))
+            duration_days = str(row.get("duration_days", "")).strip()
+            remark = str(row.get("remark", "")).strip()
+
+            existing = db.execute("""
+                SELECT id
+                FROM vessel_drydock_reports
+                WHERE vessel_id = ?
+                LIMIT 1
+            """, (vessel_id,)).fetchone()
+
+            if existing:
+                db.execute("""
+                    UPDATE vessel_drydock_reports
+                    SET
+                        target_date = ?,
+                        kind_of_survey = ?,
+                        drydock_place = ?,
+                        budget = ?,
+                        duration_days = ?,
+                        remark = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE vessel_id = ?
+                """, (
+                    target_date,
+                    kind_of_survey,
+                    drydock_place,
+                    budget,
+                    duration_days,
+                    remark,
+                    vessel_id,
+                ))
+            else:
+                db.execute("""
+                    INSERT INTO vessel_drydock_reports (
+                        vessel_id,
+                        target_date,
+                        kind_of_survey,
+                        drydock_place,
+                        budget,
+                        duration_days,
+                        remark,
+                        updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """, (
+                    vessel_id,
+                    target_date,
+                    kind_of_survey,
+                    drydock_place,
+                    budget,
+                    duration_days,
+                    remark,
+                ))
+
+        db.commit()
+        return no_cache_json({"success": True, "message": "입거수리 Report가 저장되었습니다."})
+    except Exception as e:
+        db.rollback()
+        return no_cache_json({"success": False, "message": f"저장 실패: {e}"}, 500)
 
 
 @app.route("/api/upload-report", methods=["POST"])

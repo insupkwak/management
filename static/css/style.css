@@ -1071,6 +1071,11 @@ button:hover {
   font-weight: 700;
 }
 
+.report-table td.due-blue {
+  color: #2563eb !important;
+  font-weight: 700;
+}
+
 .custom-alert-overlay {
   position: fixed;
   inset: 0;

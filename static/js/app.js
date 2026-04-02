@@ -21,6 +21,7 @@ const issueReportBtn = document.getElementById('issueReportBtn');
 const cocReportBtn = document.getElementById('cocReportBtn');
 const sireReportBtn = document.getElementById('sireReportBtn');
 const conditionReportBtn = document.getElementById('conditionReportBtn');
+const drydockReportBtn = document.getElementById('drydockReportBtn');
 
 const toggleAllLabelsBtn = document.getElementById('toggleAllLabelsBtn');
 const filterAllBtn = document.getElementById('filterAllBtn');
@@ -1912,6 +1913,12 @@ if (sireReportBtn) {
 if (conditionReportBtn) {
   conditionReportBtn.addEventListener('click', () => {
     window.open(`/condition-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
+  });
+}
+
+if (drydockReportBtn) {
+  drydockReportBtn.addEventListener('click', () => {
+    window.open(`/drydock-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
 

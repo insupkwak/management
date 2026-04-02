@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>입거수리 Report</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+</head>
+<body class="report-page-body">
+  <div class="report-page report-page-wide">
+    <div class="report-header">
+      <div>
+        <h1>입거수리 Report</h1>
+        <div class="report-subtitle">
+          Next Dry dock date 기준 오름차순 정렬
+        </div>
+      </div>
+
+      <div class="report-actions">
+        <button type="button" class="report-action-btn" onclick="window.print()">인쇄</button>
+        <button type="button" class="report-action-btn" id="saveBtn">저장</button>
+        <button type="button" class="report-action-btn secondary" onclick="window.close()">닫기</button>
+      </div>
+    </div>
+
+    <div class="report-summary-grid report-summary-grid-wide">
+      <div class="report-summary-card report-summary-card-main">
+        <div class="label">전체선박</div>
+        <div class="value">{{ total_count }}</div>
+      </div>
+
+      <div class="report-summary-card warning">
+        <div class="label">6개월 내</div>
+        <div class="value">{{ within_6m_count }}</div>
+      </div>
+
+      <div class="report-summary-card good">
+        <div class="label">1년 내</div>
+        <div class="value">{{ within_1y_count }}</div>
+      </div>
+    </div>
+
+    <div class="report-table-wrap">
+      <table class="report-table drydock-report-table" id="drydockTable">
+        <thead>
+          <tr>
+            <th>선박명</th>
+            <th>SIZE</th>
+            <th>관리사</th>
+            <th>선주감독</th>
+            <th>Next Dry dock date</th>
+            <th>Target Date</th>
+            <th>Kind of Survey</th>
+            <th>입거지</th>
+            <th>예산</th>
+            <th>공기</th>
+            <th>Remark</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report_rows %}
+          <tr data-vessel-id="{{ row.vessel_id }}">
+            <td class="left strong">{{ row.name }}</td>
+            <td>{{ row.size }}</td>
+            <td>{{ row.management_company }}</td>
+            <td>{{ row.owner_supervisor }}</td>
+            <td class="due-date-cell {{ row.next_dry_dock_class }}">{{ row.next_dry_dock }}</td>
+            <td>
+              <input
+                type="date"
+                class="drydock-input"
+                data-field="target_date"
+                value="{{ row.target_date }}"
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                class="drydock-input"
+                data-field="kind_of_survey"
+                value="{{ row.kind_of_survey }}"
+                placeholder="Kind of Survey"
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                class="drydock-input"
+                data-field="drydock_place"
+                value="{{ row.drydock_place }}"
+                placeholder="입거지"
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                class="drydock-input drydock-money-input"
+                data-field="budget"
+                value="{{ row.budget }}"
+                placeholder="예산"
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                class="drydock-input drydock-days-input"
+                data-field="duration_days"
+                value="{{ row.duration_days }}"
+                placeholder="공기"
+              />
+            </td>
+            <td class="left">
+              <input
+                type="text"
+                class="drydock-input drydock-remark-input"
+                data-field="remark"
+                value="{{ row.remark }}"
+                placeholder="Remark"
+              />
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <style>
+    .drydock-report-table {
+      width: 100%;
+      table-layout: auto;
+      min-width: 1600px;
+    }
+
+    .drydock-report-table th,
+    .drydock-report-table td {
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .drydock-report-table td.left {
+      text-align: left;
+    }
+
+    .drydock-report-table th:nth-child(1),
+    .drydock-report-table td:nth-child(1) {
+      min-width: 150px;
+    }
+
+    .drydock-report-table th:nth-child(2),
+    .drydock-report-table td:nth-child(2) {
+      min-width: 90px;
+    }
+
+    .drydock-report-table th:nth-child(3),
+    .drydock-report-table td:nth-child(3) {
+      min-width: 110px;
+    }
+
+    .drydock-report-table th:nth-child(4),
+    .drydock-report-table td:nth-child(4) {
+      min-width: 110px;
+    }
+
+    .drydock-report-table th:nth-child(5),
+    .drydock-report-table td:nth-child(5) {
+      min-width: 120px;
+    }
+
+    .drydock-report-table th:nth-child(6),
+    .drydock-report-table td:nth-child(6) {
+      min-width: 130px;
+    }
+
+    .drydock-report-table th:nth-child(7),
+    .drydock-report-table td:nth-child(7) {
+      min-width: 180px;
+    }
+
+    .drydock-report-table th:nth-child(8),
+    .drydock-report-table td:nth-child(8) {
+      min-width: 140px;
+    }
+
+    .drydock-report-table th:nth-child(9),
+    .drydock-report-table td:nth-child(9) {
+      min-width: 120px;
+    }
+
+    .drydock-report-table th:nth-child(10),
+    .drydock-report-table td:nth-child(10) {
+      min-width: 90px;
+    }
+
+    .drydock-report-table th:nth-child(11),
+    .drydock-report-table td:nth-child(11) {
+      min-width: 260px;
+      white-space: normal;
+    }
+
+    .drydock-input {
+      width: 100%;
+      min-width: 0;
+      height: 34px;
+      margin: 0;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 12px;
+    }
+
+    .drydock-money-input {
+      text-align: right;
+    }
+
+    .drydock-days-input {
+      text-align: center;
+    }
+
+    .drydock-remark-input {
+      min-width: 220px;
+    }
+
+    @media print {
+      .drydock-input {
+        border: none;
+        background: transparent;
+        padding: 0;
+        height: auto;
+      }
+    }
+  </style>
+
+  <script>
+    function normalizeMoney(value) {
+      return String(value || '').replace(/[^0-9.]/g, '').trim();
+    }
+
+    function formatMoneyInput(value) {
+      const raw = normalizeMoney(value);
+      if (!raw) return '';
+      const parts = raw.split('.');
+      const intPart = parts[0] || '0';
+      const decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+      return '$ ' + Number(intPart).toLocaleString('en-US') + decimalPart;
+    }
+
+    document.querySelectorAll('.drydock-money-input').forEach((input) => {
+      input.addEventListener('input', () => {
+        const atEnd = input.selectionStart === input.value.length;
+        input.value = formatMoneyInput(input.value);
+        if (atEnd) {
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+      });
+
+      input.addEventListener('blur', () => {
+        input.value = formatMoneyInput(input.value);
+      });
+
+      input.value = formatMoneyInput(input.value);
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      const rows = Array.from(document.querySelectorAll('#drydockTable tbody tr')).map((tr) => {
+        const get = (field) => tr.querySelector(`[data-field="${field}"]`)?.value || '';
+
+        return {
+          vessel_id: Number(tr.dataset.vesselId),
+          target_date: get('target_date').trim(),
+          kind_of_survey: get('kind_of_survey').trim(),
+          drydock_place: get('drydock_place').trim(),
+          budget: normalizeMoney(get('budget')),
+          duration_days: get('duration_days').trim(),
+          remark: get('remark').trim()
+        };
+      });
+
+      try {
+        const response = await fetch(`/api/drydock-report/save?_=${Date.now()}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          body: JSON.stringify({ rows })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          alert(result.message || '저장 실패');
+          return;
+        }
+
+        alert('입거수리 Report가 저장되었습니다.');
+      } catch (error) {
+        console.error(error);
+        alert('저장 중 오류가 발생했습니다.');
+      }
+    });
+  </script>
+</body>
+</html>
