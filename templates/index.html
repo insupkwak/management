@@ -28,9 +28,9 @@
   <form id="vesselForm">
     <div class="form-accordion">
 
-      <!-- 1. 선박정보입력 -->
+      <!-- 1. 선박정보 -->
       <div class="accordion-section">
-        <button type="button" class="accordion-toggle">선박정보입력</button>
+        <button type="button" class="accordion-toggle">선박정보</button>
         <div class="accordion-content">
           <label for="vesselName">선박명</label>
           <input id="vesselName" type="text" required />
@@ -91,446 +91,67 @@
         </div>
       </div>
 
-      <!-- 2. 현안업무 -->
-      <div class="accordion-section">
-        <button type="button" class="accordion-toggle">현안업무</button>
-        <div class="accordion-content">
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue1">현안업무 1</label>
-              <input id="issue1" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue1Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
+           <!-- 2. 현안업무 -->
+     <div class="accordion-section">
+       <button type="button" class="accordion-toggle">현안업무</button>
+       <div class="accordion-content">
+         <div class="issue-top-filter">
+           <button type="button" id="issueFilterProgressBtn" class="issue-filter-btn active-progress">진행 중</button>
+           <button type="button" id="issueFilterDoneBtn" class="issue-filter-btn">완료</button>
+         </div>
 
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue2">현안업무 2</label>
-              <input id="issue2" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue2Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
+         <div id="issueSection" class="issue-dynamic-list"></div>
 
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue3">현안업무 3</label>
-              <input id="issue3" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue3Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
+         <button type="button" id="addIssueBtn" class="issue-add-btn">추가</button>
+       </div>
+     </div>
 
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue4">현안업무 4</label>
-              <input id="issue4" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue4Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue5">현안업무 5</label>
-              <input id="issue5" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue5Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue6">현안업무 6</label>
-              <input id="issue6" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue6Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue7">현안업무 7</label>
-              <input id="issue7" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue7Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue8">현안업무 8</label>
-              <input id="issue8" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue8Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue9">현안업무 9</label>
-              <input id="issue9" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue9Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label for="issue10">현안업무 10</label>
-              <input id="issue10" type="text" />
-            </div>
-            <label class="issue-critical-check">
-              <input id="issue10Critical" type="checkbox" />
-              <span>Critical</span>
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label>현안업무 11</label>
-              <input id="issue11" />
-            </div>
-            <label class="issue-critical-check">
-              <input type="checkbox" id="issue11Critical" /> Critical
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label>현안업무 12</label>
-              <input id="issue12" />
-            </div>
-            <label class="issue-critical-check">
-              <input type="checkbox" id="issue12Critical" /> Critical
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label>현안업무 13</label>
-              <input id="issue13" />
-            </div>
-            <label class="issue-critical-check">
-              <input type="checkbox" id="issue13Critical" /> Critical
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label>현안업무 14</label>
-              <input id="issue14" />
-            </div>
-            <label class="issue-critical-check">
-              <input type="checkbox" id="issue14Critical" /> Critical
-            </label>
-          </div>
-
-          <div class="issue-input-row">
-            <div class="issue-input-main">
-              <label>현안업무 15</label>
-              <input id="issue15" />
-            </div>
-            <label class="issue-critical-check">
-              <input type="checkbox" id="issue15Critical" /> Critical
-            </label>
-          </div>
-        </div>
-      </div>
-
-
- <!-- 3. COC 현황 -->
+<!-- 3. COC 현황 -->
 <div class="accordion-section">
   <button type="button" class="accordion-toggle">COC 현황</button>
   <div class="accordion-content" id="cocSection">
-    <div class="coc-stack">
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType1">증서종류</label>
-            <input id="cocType1" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate1">Due Date</label>
-            <input id="cocDueDate1" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary1">요약</label>
-          <input id="cocSummary1" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType2">증서종류</label>
-            <input id="cocType2" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate2">Due Date</label>
-            <input id="cocDueDate2" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary2">요약</label>
-          <input id="cocSummary2" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType3">증서종류</label>
-            <input id="cocType3" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate3">Due Date</label>
-            <input id="cocDueDate3" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary3">요약</label>
-          <input id="cocSummary3" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType4">증서종류</label>
-            <input id="cocType4" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate4">Due Date</label>
-            <input id="cocDueDate4" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary4">요약</label>
-          <input id="cocSummary4" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType5">증서종류</label>
-            <input id="cocType5" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate5">Due Date</label>
-            <input id="cocDueDate5" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary5">요약</label>
-          <input id="cocSummary5" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType6">증서종류</label>
-            <input id="cocType6" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate6">Due Date</label>
-            <input id="cocDueDate6" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary6">요약</label>
-          <input id="cocSummary6" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType7">증서종류</label>
-            <input id="cocType7" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate7">Due Date</label>
-            <input id="cocDueDate7" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary7">요약</label>
-          <input id="cocSummary7" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType8">증서종류</label>
-            <input id="cocType8" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate8">Due Date</label>
-            <input id="cocDueDate8" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary8">요약</label>
-          <input id="cocSummary8" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType9">증서종류</label>
-            <input id="cocType9" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate9">Due Date</label>
-            <input id="cocDueDate9" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary9">요약</label>
-          <input id="cocSummary9" type="text" />
-        </div>
-      </div>
-
-      <div class="coc-item">
-        <div class="coc-item-top">
-          <div>
-            <label for="cocType10">증서종류</label>
-            <input id="cocType10" type="text" />
-          </div>
-          <div>
-            <label for="cocDueDate10">Due Date</label>
-            <input id="cocDueDate10" class="date-field" type="text" placeholder="날짜" data-date-input />
-          </div>
-        </div>
-        <div class="coc-item-bottom">
-          <label for="cocSummary10">요약</label>
-          <input id="cocSummary10" type="text" />
-        </div>
-      </div>
-
+    <div class="issue-top-filter">
+      <button type="button" id="cocFilterProgressBtn" class="issue-filter-btn active-progress">진행 중</button>
+      <button type="button" id="cocFilterDoneBtn" class="issue-filter-btn">완료</button>
     </div>
+
+    <div id="cocDynamicSection" class="issue-dynamic-list"></div>
+
+    <button type="button" id="addCocBtn" class="issue-add-btn">추가</button>
   </div>
 </div>
 
-      <!-- 4. Sire Vetting 정보 -->
-      <div class="accordion-section" id="sireSectionWrap">
-        <button type="button" class="accordion-toggle">Sire 현황</button>
-        <div class="accordion-content" id="sireSection">
-          <div class="sire-block">
-            <div class="sire-row">
-              <div class="sire-row-top">
-                <input id="sireType1" type="text" placeholder="Sire 종류" />
-                <input id="sireDate1" class="date-field" type="text" placeholder="날짜" data-date-input />
-                <select id="sireStatus1">
-                  <option value="">선택</option>
-                  <option value="예정">예정</option>
-                  <option value="결함조치 중">결함조치 중</option>
-                  <option value="수검완료">수검완료</option>
-                </select>
-              </div>
-              <div class="sire-row-bottom">
-                <input id="sireFindings1" type="number" min="0" placeholder="지적사항 몇건" />
-                <input id="sireOpenFindings1" type="number" min="0" placeholder="잔여지적사항 몇건" />
-              </div>
-              <div class="input-row">
-                <input id="sireRemark1" placeholder="특이사항">
-              </div>
-            </div>
+<!-- 4. Sire Vetting 정보 -->
+<div class="accordion-section" id="sireSectionWrap">
+  <button type="button" class="accordion-toggle">Sire 현황</button>
+  <div class="accordion-content" id="sireSection">
+    <div class="issue-top-filter">
+      <button type="button" id="sireFilterProgressBtn" class="issue-filter-btn active-progress">진행 중</button>
+      <button type="button" id="sireFilterDoneBtn" class="issue-filter-btn">완료</button>
+    </div>
 
-            <div class="sire-row">
-              <div class="sire-row-top">
-                <input id="sireType2" type="text" placeholder="Sire 종류" />
-                <input id="sireDate2" class="date-field" type="text" placeholder="날짜" data-date-input />
-                <select id="sireStatus2">
-                  <option value="">선택</option>
-                  <option value="예정">예정</option>
-                  <option value="결함조치 중">결함조치 중</option>
-                  <option value="수검완료">수검완료</option>
-                </select>
-              </div>
-              <div class="sire-row-bottom">
-                <input id="sireFindings2" type="number" min="0" placeholder="지적사항 몇건" />
-                <input id="sireOpenFindings2" type="number" min="0" placeholder="잔여지적사항 몇건" />
-              </div>
-              <div class="input-row">
-                <input id="sireRemark2" placeholder="특이사항">
-              </div>
-            </div>
+    <div id="sireDynamicSection" class="issue-dynamic-list"></div>
 
-            <div class="sire-row">
-              <div class="sire-row-top">
-                <input id="sireType3" type="text" placeholder="Sire 종류" />
-                <input id="sireDate3" class="date-field" type="text" placeholder="날짜" data-date-input />
-                <select id="sireStatus3">
-                  <option value="">선택</option>
-                  <option value="예정">예정</option>
-                  <option value="결함조치 중">결함조치 중</option>
-                  <option value="수검완료">수검완료</option>
-                </select>
-              </div>
-              <div class="sire-row-bottom">
-                <input id="sireFindings3" type="number" min="0" placeholder="지적사항 몇건" />
-                <input id="sireOpenFindings3" type="number" min="0" placeholder="잔여지적사항 몇건" />
-              </div>
-              <div class="input-row">
-                <input id="sireRemark3" placeholder="특이사항">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <button type="button" id="addSireBtn" class="issue-add-btn">추가</button>
+  </div>
+</div>
 
-      <!-- 5. Condition Report -->
-      <div class="accordion-section">
-        <button type="button" class="accordion-toggle">Condition Report</button>
-        <div class="accordion-content" id="conditionReportSection">
-          <div class="sire-block">
-            <div class="sire-row">
-              <div class="sire-row-top">
-                <input id="conditionReportType" type="text" placeholder="Condition Report 종류" />
-                <input id="conditionReportDate" class="date-field" type="text" placeholder="날짜" data-date-input />
-                <select id="conditionReportStatus">
-                  <option value="">선택</option>
-                  <option value="예정">예정</option>
-                  <option value="결함조치 중">결함조치 중</option>
-                  <option value="수검완료">수검완료</option>
-                </select>
-              </div>
-              <div class="sire-row-bottom">
-                <input id="conditionReportFindings" type="number" min="0" placeholder="지적사항 몇건" />
-                <input id="conditionReportOpenFindings" type="number" min="0" placeholder="잔여지적사항 몇건" />
-              </div>
-              <input id="conditionReportRemark" placeholder="특이사항">
-            </div>
-          </div>
-        </div>
-      </div>
+<!-- 5. Condition Report -->
+<div class="accordion-section">
+  <button type="button" class="accordion-toggle">Condition Report</button>
+  <div class="accordion-content" id="conditionReportSection">
+    <div class="issue-top-filter">
+      <button type="button" id="conditionFilterProgressBtn" class="issue-filter-btn active-progress">진행 중</button>
+      <button type="button" id="conditionFilterDoneBtn" class="issue-filter-btn">완료</button>
+    </div>
+
+    <div id="conditionDynamicSection" class="issue-dynamic-list"></div>
+
+    <button type="button" id="addConditionBtn" class="issue-add-btn">추가</button>
+  </div>
+</div>
+
+
 
       <!-- 6. 관리사 비용 -->
       <div class="accordion-section">
@@ -642,61 +263,71 @@
   </form>
 </div>
 
-  <div class="card">
-      <h2>담당감독 업무 사이트 </h2>
-<div class="report-external-links">
-  <a href="http://152.67.223.114:5000/" target="_blank" class="report-link-btn">
-    입거수리
-  </a>
-  <a href="http://152.67.202.26:5000/" target="_blank" class="report-link-btn">
-    상세현황
-  </a>
-</div>
-</div>
+<div class="card">
+  <div class="report-topbar">
+    <h2>Report 관리</h2>
+  </div>
 
-
-      <div class="card">
-
-        
-        <div class="report-topbar">
-          <h2>Report 관리</h2>
-        </div>
-
-<div class="report-link-grid">
-  <button type="button" id="issueReportBtn" class="report-view-btn">현안업무</button>
-  <button type="button" id="cocReportBtn" class="report-view-btn">COC</button>
-  <button type="button" id="sireReportBtn" class="report-view-btn">SIRE</button>
-  <button type="button" id="conditionReportBtn" class="report-view-btn">CONDITION</button>
-  <button type="button" id="managementCostReportBtn" class="report-view-btn">관리사 비용</button>
-  <button type="button" id="drydockReportBtn" class="report-view-btn">입거수리</button>
+  <div class="report-link-grid">
+    <button type="button" id="issueReportBtn" class="report-view-btn">현안업무</button>
+    <button type="button" id="cocReportBtn" class="report-view-btn">COC</button>
+    <button type="button" id="sireReportBtn" class="report-view-btn">SIRE</button>
+    <button type="button" id="conditionReportBtn" class="report-view-btn">CONDITION</button>
+    <button type="button" id="managementCostReportBtn" class="report-view-btn">관리사 비용</button>
+    <button type="button" id="drydockReportBtn" class="report-view-btn">입거수리</button>
+  </div>
 </div>
 
 
+<div class="card">
+  <h2>담당감독 업무 사이트</h2>
 
-<button type="button" id="positionUpdateBtn" class="btn-secondary report-upload-btn">위치 Excel 업로드</button>
-<input id="positionExcelInput" type="file" accept=".xlsx" hidden />
-<input id="reportFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" hidden />
+  <div class="report-external-links">
+    <a href="http://152.67.223.114:5000/" target="_blank" class="report-link-btn">입거수리</a>
+    <a href="http://152.67.202.26:5000/" target="_blank" class="report-link-btn">업무상세</a>
+    <a href="/trip-schedule" class="report-link-btn">출장일정</a>
+  </div>
+</div>
 
-<button type="button" id="managementCostUploadBtn" class="btn-secondary report-upload-btn">
-  관리사 비용 Excel 업로드
-</button>
-<input
-  type="file"
-  id="managementCostExcelInput"
-  accept=".xlsx"
-  style="display:none"
-/>
+<div class="card">
+  <div class="report-topbar">
+    <h2>Data 업로드</h2>
+  </div>
 
-      </div>
+  <div class="report-upload-grid">
+    <button type="button" id="positionUpdateBtn" class="btn-secondary report-upload-btn">
+      위치 Excel 업로드
+    </button>
 
-      <div class="card">
-        <h2>선박 리스트</h2>
-        <div id="vesselList" class="vessel-list"></div>
-      
-     <div class="footer">
+    <button type="button" id="managementCostUploadBtn" class="btn-secondary report-upload-btn">
+      관리사 비용 Excel 업로드
+    </button>
+  </div>
+
+  <input id="positionExcelInput" type="file" accept=".xlsx" hidden />
+  <input
+    type="file"
+    id="managementCostExcelInput"
+    accept=".xlsx"
+    style="display:none"
+  />
+
+  <input id="reportFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" hidden />
+</div>
+
+<div class="card ship-list-card">
+  <div class="accordion-section">
+    <button type="button" class="accordion-toggle">선박 리스트</button>
+    <div class="accordion-content">
+      <div id="vesselList" class="vessel-list"></div>
+
+      <div class="footer">
         © 2026 Vessel Management System. All rights reserved.
       </div>
-      </div>
+    </div>
+  </div>
+</div>
+      
     </aside>
 
     <main class="map-wrap" id="mapWrap">

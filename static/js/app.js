@@ -26,8 +26,6 @@ const drydockReportBtn = document.getElementById('drydockReportBtn');
 const toggleAllLabelsBtn = document.getElementById('toggleAllLabelsBtn');
 const filterAllBtn = document.getElementById('filterAllBtn');
 
-
-
 const filterVlccBtn = document.getElementById('filterVlccBtn');
 const filterSireProgressBtn = document.getElementById('filterSireProgressBtn');
 const filterTrmt1Btn = document.getElementById('filterTrmt1Btn');
@@ -57,7 +55,6 @@ const countCritical = document.getElementById('countCritical');
 const vesselType = document.getElementById('vesselType');
 const cargoStatusWrap = document.getElementById('cargoStatusWrap');
 const cocSection = document.getElementById('cocSection');
-const sireSection = document.getElementById('sireSection');
 
 const managementCostReportBtn = document.getElementById('managementCostReportBtn');
 
@@ -71,12 +68,23 @@ const costReportCancelBtn = document.getElementById('costReportCancelBtn');
 const managementCostUploadBtn = document.getElementById('managementCostUploadBtn');
 const managementCostExcelInput = document.getElementById('managementCostExcelInput');
 
+const cocDynamicSection = document.getElementById('cocDynamicSection');
+const addCocBtn = document.getElementById('addCocBtn');
+const cocFilterProgressBtn = document.getElementById('cocFilterProgressBtn');
+const cocFilterDoneBtn = document.getElementById('cocFilterDoneBtn');
+
+const sireDynamicSection = document.getElementById('sireDynamicSection');
+const addSireBtn = document.getElementById('addSireBtn');
+const sireFilterProgressBtn = document.getElementById('sireFilterProgressBtn');
+const sireFilterDoneBtn = document.getElementById('sireFilterDoneBtn');
+
+const conditionDynamicSection = document.getElementById('conditionDynamicSection');
+const addConditionBtn = document.getElementById('addConditionBtn');
+const conditionFilterProgressBtn = document.getElementById('conditionFilterProgressBtn');
+const conditionFilterDoneBtn = document.getElementById('conditionFilterDoneBtn');
+
 const COC_COUNT = 10;
 const SIRE_COUNT = 3;
-
-
-
-
 
 let vessels = [];
 let markers = [];
@@ -92,6 +100,11 @@ let uploadTargetReportKey = null;
 let isLoading = false;
 let managementCostRequestSeq = 0;
 
+let currentIssueFilter = '진행 중';
+let currentCocFilter = '진행 중';
+let currentSireFilter = '진행 중';
+let currentConditionFilter = '진행 중';
+
 const REPORT_KEYS = [
   'report1_file',
   'report2_file',
@@ -102,7 +115,6 @@ const REPORT_KEYS = [
   'report7_file',
   'report8_file'
 ];
-
 
 const shipSvg = (color) => `
   <div class="ship-icon">
@@ -117,8 +129,6 @@ const shipSvg = (color) => `
     </svg>
   </div>
 `;
-
-
 
 const customAlert = document.getElementById('customAlert');
 const customAlertMessage = document.getElementById('customAlertMessage');
@@ -185,7 +195,6 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
-
 function bindMoneyInputs() {
   const ids = [
     'opexContractCrewAmount',
@@ -228,7 +237,6 @@ function formatMoneyInputValue(value) {
   return `$ ${withComma}${decimalPart}`;
 }
 
-
 function formatUsd(value) {
   const num = Number(value || 0);
   return '$ ' + num.toLocaleString();
@@ -249,11 +257,17 @@ function getTechAorDisplayData(vessel) {
   };
 }
 
-
 function normalizeMoneyForSave(value) {
   return String(value ?? '').replace(/\$/g, '').replace(/,/g, '').trim();
 }
 
+function normalizeBinaryStatus(value) {
+  return String(value || '').trim() === '완료' ? '완료' : '진행 중';
+}
+
+function getSireLikeBucket(status) {
+  return String(status || '').trim() === '수검완료' ? '완료' : '진행 중';
+}
 
 function hasText(value) {
   return String(value ?? '').trim() !== '';
@@ -277,8 +291,116 @@ function normalizeSireStatus(value) {
   return '';
 }
 
+function getIssueItemsForSave() {
+  const issueCards = Array.from(document.querySelectorAll('.issue-card.issue-only-card'));
+
+  return issueCards.map((card, idx) => {
+    const textEl = card.querySelector('.issue-text');
+    const criticalEl = card.querySelector('.issue-critical');
+    const progressBtn = card.querySelector('.issue-status-btn[data-status="진행 중"]');
+    const doneBtn = card.querySelector('.issue-status-btn[data-status="완료"]');
+
+    const text = textEl ? textEl.value.trim() : '';
+    const isCritical = criticalEl ? criticalEl.checked : false;
+
+    let issueStatus = '진행 중';
+    if (doneBtn && doneBtn.classList.contains('active-done')) {
+      issueStatus = '완료';
+    } else if (progressBtn && progressBtn.classList.contains('active-progress')) {
+      issueStatus = '진행 중';
+    }
+
+    return {
+      issueText: text,
+      isCritical: isCritical,
+      issueStatus: issueStatus,
+      sortOrder: idx + 1
+    };
+  }).filter(item => item.issueText);
+}
+
+function getCocItemsForSave() {
+  const cards = Array.from(document.querySelectorAll('.coc-card'));
+
+  return cards.map((card, idx) => {
+    const cocType = card.querySelector('.coc-type')?.value.trim() || '';
+    const cocSummary = card.querySelector('.coc-summary')?.value.trim() || '';
+    const cocDueDate = card.querySelector('.coc-due-date')?.value || '';
+
+    const progressBtn = card.querySelector('.coc-status-btn[data-status="진행 중"]');
+    const doneBtn = card.querySelector('.coc-status-btn[data-status="완료"]');
+
+    let itemStatus = '진행 중';
+    if (doneBtn?.classList.contains('active-done')) itemStatus = '완료';
+    if (progressBtn?.classList.contains('active-progress')) itemStatus = '진행 중';
+
+    return {
+      cocType,
+      cocSummary,
+      cocDueDate,
+      itemStatus,
+      sortOrder: idx + 1
+    };
+  }).filter(item => item.cocType || item.cocSummary || item.cocDueDate);
+}
+
+function getSireItemsForSave() {
+  const cards = Array.from(document.querySelectorAll('.sire-card'));
+
+  return cards.map((card, idx) => {
+    const sireType = card.querySelector('.sire-type')?.value.trim() || '';
+    const sireDate = card.querySelector('.sire-date')?.value || '';
+    const sireStatus = card.querySelector('.sire-status-select')?.value || '예정';
+    const sireFindings = card.querySelector('.sire-findings')?.value.trim() || '';
+    const sireOpenFindings = card.querySelector('.sire-open-findings')?.value.trim() || '';
+    const sireRemark = card.querySelector('.sire-remark')?.value.trim() || '';
+
+    return {
+      sireType,
+      sireDate,
+      sireStatus,
+      sireFindings,
+      sireOpenFindings,
+      sireRemark,
+      sortOrder: idx + 1
+    };
+  }).filter(item =>
+    item.sireType || item.sireDate || item.sireStatus || item.sireFindings || item.sireOpenFindings || item.sireRemark
+  );
+}
+
+function getConditionItemsForSave() {
+  const cards = Array.from(document.querySelectorAll('.condition-card'));
+
+  return cards.map((card, idx) => {
+    const conditionType = card.querySelector('.condition-type')?.value.trim() || '';
+    const conditionDate = card.querySelector('.condition-date')?.value || '';
+    const conditionStatus = card.querySelector('.condition-status-select')?.value || '예정';
+    const conditionFindings = card.querySelector('.condition-findings')?.value.trim() || '';
+    const conditionOpenFindings = card.querySelector('.condition-open-findings')?.value.trim() || '';
+    const conditionRemark = card.querySelector('.condition-remark')?.value.trim() || '';
+
+    return {
+      conditionType,
+      conditionDate,
+      conditionStatus,
+      conditionFindings,
+      conditionOpenFindings,
+      conditionRemark,
+      sortOrder: idx + 1
+    };
+  }).filter(item =>
+    item.conditionType || item.conditionDate || item.conditionStatus ||
+    item.conditionFindings || item.conditionOpenFindings || item.conditionRemark
+  );
+}
+
 function setupDateInputs() {
   document.querySelectorAll('[data-date-input]').forEach((input) => {
+    if (input.dataset.dateBound === '1') {
+      return;
+    }
+
     const syncEmptyState = () => {
       if (!input.value) {
         input.type = 'text';
@@ -311,6 +433,8 @@ function setupDateInputs() {
     input.addEventListener('blur', () => {
       syncEmptyState();
     });
+
+    input.dataset.dateBound = '1';
   });
 }
 
@@ -343,7 +467,6 @@ function updateVesselTypeUI() {
   }
 }
 
-
 function makeOptionalLine(label, value) {
   if (!value) return '';
   return `
@@ -355,6 +478,14 @@ function makeOptionalLine(label, value) {
 }
 
 function hasCriticalIssue(vessel) {
+  if (Array.isArray(vessel.issue_items) && vessel.issue_items.length) {
+    return vessel.issue_items.some(item => {
+      const text = String(item.issue_text || item.issueText || '').trim();
+      const critical = Number(item.is_critical ?? item.isCritical ?? 0) === 1 || item.is_critical === true;
+      return text && critical;
+    });
+  }
+
   for (let i = 1; i <= 15; i++) {
     const issueText = String(vessel[`issue_${i}`] || '').trim();
     const critical = Number(vessel[`issue_${i}_critical`] || 0) === 1;
@@ -362,8 +493,6 @@ function hasCriticalIssue(vessel) {
   }
   return false;
 }
-
-
 
 function isCocDueWithin1Month(value) {
   const text = String(value || '').trim();
@@ -383,7 +512,83 @@ function isCocDueWithin1Month(value) {
   return due >= today && due <= oneMonthLater;
 }
 
+function getLegacyCocItemsFromVessel(vessel) {
+  const items = [];
+  for (let i = 1; i <= COC_COUNT; i++) {
+    const cocType = String(vessel[`coc_type_${i}`] || '').trim();
+    const cocSummary = String(vessel[`coc_summary_${i}`] || '').trim();
+    const cocDueDate = String(vessel[`coc_due_date_${i}`] || '').trim();
+
+    if (cocType || cocSummary || cocDueDate) {
+      items.push({
+        coc_type: cocType,
+        coc_summary: cocSummary,
+        coc_due_date: cocDueDate,
+        item_status: '진행 중',
+        sort_order: i
+      });
+    }
+  }
+  return items;
+}
+
+function getLegacySireItemsFromVessel(vessel) {
+  const items = [];
+  for (let i = 1; i <= 5; i++) {
+    const sireType = String(vessel[`sire_type_${i}`] || '').trim();
+    const sireDate = String(vessel[`sire_date_${i}`] || '').trim();
+    const sireStatus = String(vessel[`sire_status_${i}`] || '').trim();
+    const sireFindings = String(vessel[`sire_findings_${i}`] || '').trim();
+    const sireOpenFindings = String(vessel[`sire_open_findings_${i}`] || '').trim();
+    const sireRemark = String(vessel[`sire_remark_${i}`] || '').trim();
+
+    if (sireType || sireDate || sireStatus || sireFindings || sireOpenFindings || sireRemark) {
+      items.push({
+        sire_type: sireType,
+        sire_date: sireDate,
+        sire_status: sireStatus || '예정',
+        sire_findings: sireFindings,
+        sire_open_findings: sireOpenFindings,
+        sire_remark: sireRemark,
+        sort_order: i
+      });
+    }
+  }
+  return items;
+}
+
+function getLegacyConditionItemsFromVessel(vessel) {
+  const type = String(vessel.condition_report_type || '').trim();
+  const date = String(vessel.condition_report_date || '').trim();
+  const status = String(vessel.condition_report_status || '').trim();
+  const findings = String(vessel.condition_report_findings || '').trim();
+  const openFindings = String(vessel.condition_report_open_findings || '').trim();
+  const remark = String(vessel.condition_report_remark || '').trim();
+
+  if (!type && !date && !status && !findings && !openFindings && !remark) {
+    return [];
+  }
+
+  return [{
+    condition_type: type,
+    condition_date: date,
+    condition_status: status || '예정',
+    condition_findings: findings,
+    condition_open_findings: openFindings,
+    condition_remark: remark,
+    sort_order: 1
+  }];
+}
+
 function hasAnyCoc(vessel) {
+  if (Array.isArray(vessel.coc_items) && vessel.coc_items.length) {
+    return vessel.coc_items.some(item => {
+      const status = normalizeBinaryStatus(item.item_status);
+      if (status !== '진행 중') return false;
+      return isCocDueWithin1Month(item.coc_due_date);
+    });
+  }
+
   for (let i = 1; i <= COC_COUNT; i++) {
     if (isCocDueWithin1Month(vessel[`coc_due_date_${i}`])) {
       return true;
@@ -392,14 +597,11 @@ function hasAnyCoc(vessel) {
   return false;
 }
 
-
-
-
-
-
-
-
 function hasSireInProgress(vessel) {
+  if (Array.isArray(vessel.sire_items) && vessel.sire_items.length) {
+    return vessel.sire_items.some(item => String(item.sire_status || '').trim() === '결함조치 중');
+  }
+
   for (let i = 1; i <= SIRE_COUNT; i++) {
     if (String(vessel[`sire_status_${i}`] || '').trim() === '결함조치 중') {
       return true;
@@ -427,23 +629,32 @@ function isDryDockDueWithin6Months(value) {
 }
 
 function makeIssueLines(vessel) {
-  const lines = [];
-  for (let i = 1; i <= 15; i++) {
-    const value = String(vessel[`issue_${i}`] || '').trim();
-    const isCritical = Number(vessel[`issue_${i}_critical`] || 0) === 1;
+  if (!Array.isArray(vessel.issue_items)) return '';
 
-    if (value) {
-      lines.push(
-        `<div class="line issue-line">
-          <div class="line-label">${i}</div>
+  const sortedItems = [...vessel.issue_items].sort((a, b) => {
+    const aOrder = Number(a.sort_order ?? a.sortOrder ?? 9999);
+    const bOrder = Number(b.sort_order ?? b.sortOrder ?? 9999);
+    return aOrder - bOrder;
+  });
+
+  return sortedItems
+    .filter(item => String(item.issue_status || item.issueStatus || '').trim() === '진행 중')
+    .map((item, idx) => {
+      const value = String(item.issue_text || item.issueText || '').trim();
+      const isCritical = Number(item.is_critical ?? item.isCritical ?? 0) === 1 || item.is_critical === true;
+
+      if (!value) return '';
+
+      return `
+        <div class="line issue-line">
+          <div class="line-label">${idx + 1}</div>
           <div class="line-value ${isCritical ? 'map-value-red' : ''}">
             ${escapeHtml(value)}
           </div>
-        </div>`
-      );
-    }
-  }
-  return lines.join('');
+        </div>
+      `;
+    })
+    .join('');
 }
 
 function getSireStatusHtml(status) {
@@ -462,106 +673,207 @@ function getSireStatusHtml(status) {
   return `<span>${escapeHtml(v)}</span>`;
 }
 
-function makeCocLines(vessel) {
-  const lines = [];
 
-  for (let i = 1; i <= COC_COUNT; i++) {
-    const type = String(vessel[`coc_type_${i}`] || '').trim();
-    const summary = String(vessel[`coc_summary_${i}`] || '').trim();
-    const dueDate = String(vessel[`coc_due_date_${i}`] || '').trim();
 
-    if (type || summary || dueDate) {
-      lines.push(`
-        <div class="line issue-line">
-          <div class="line-label">${i}</div>
-          <div class="line-value">
-            ${type ? escapeHtml(type) : ''}
-            ${summary ? ` / ${escapeHtml(summary)}` : ''}
-            ${dueDate ? ` / <span class="map-value-blue">${escapeHtml(dueDate)}</span>` : ''}
-          </div>
-        </div>
-      `);
-    }
-  }
-
-  return lines.join('');
+function surveyDisplayValue(value) {
+  const text = String(value ?? '').trim();
+  return text ? escapeHtml(text) : '-';
 }
 
-function makeSireLines(vessel) {
-  const lines = [];
 
-  for (let i = 1; i <= SIRE_COUNT; i++) {
-    const type = String(vessel[`sire_type_${i}`] || '').trim();
-    const date = String(vessel[`sire_date_${i}`] || '').trim();
-    const status = String(vessel[`sire_status_${i}`] || '').trim();
-    const findings = String(vessel[`sire_findings_${i}`] || '').trim();
-    const openFindings = String(vessel[`sire_open_findings_${i}`] || '').trim();
-    const remark = String(vessel[`sire_remark_${i}`] || '').trim();
 
-    if (type || date || status || findings || openFindings) {
-      let detail = '';
-      if (findings) detail += ` / 지적 ${escapeHtml(findings)}건`;
-      if (openFindings) detail += ` / 잔여 ${escapeHtml(openFindings)}건`;
-      if (remark) detail += ` / ${escapeHtml(remark)}`;
+function makeSurveyInlineTable(items, options) {
+  const {
+    kindKey,
+    statusKey,
+    dateKey,
+    findingsKey,
+    openFindingsKey,
+    remarkKey
+  } = options;
 
-      lines.push(`
-        <div class="line issue-line">
-          <div class="line-label">${i}</div>
-          <div class="line-value">
-            ${type ? escapeHtml(type) : ''}
-            ${date ? ` / ${escapeHtml(date)}` : ''}
-            ${status ? ` / ${getSireStatusHtml(status)}` : ''}
-            ${detail}
-          </div>
+  if (!items.length) return '';
+
+  return items.map((item) => {
+    const statusText = String(item[statusKey] || '').trim();
+    const statusHtml = statusText ? getSireStatusHtml(statusText) : '-';
+
+    const findingsText = String(item[findingsKey] || '').trim()
+      ? `지적 ${escapeHtml(item[findingsKey])}건`
+      : '-';
+
+    const openFindingsText = String(item[openFindingsKey] || '').trim()
+      ? `잔여 ${escapeHtml(item[openFindingsKey])}건`
+      : '-';
+
+    const remarkText = String(item[remarkKey] || '').trim();
+
+    return `
+      <div class="survey-inline-block">
+        <div class="survey-inline-main-row">
+          <div class="survey-inline-main-cell">${surveyDisplayValue(item[kindKey])}</div>
+          <div class="survey-inline-main-cell">${statusHtml}</div>
+          <div class="survey-inline-main-cell">${surveyDisplayValue(item[dateKey])}</div>
+          <div class="survey-inline-main-cell">${findingsText}</div>
+          <div class="survey-inline-main-cell">${openFindingsText}</div>
         </div>
-      `);
-    }
+
+        ${remarkText ? `
+          <div class="survey-inline-remark-row">
+            <div class="survey-inline-remark-label">특이사항</div>
+            <div class="survey-inline-remark-value">${escapeHtml(remarkText)}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+
+function makeCocLines(vessel) {
+  let items = [];
+
+  if (Array.isArray(vessel.coc_items) && vessel.coc_items.length) {
+    items = [...vessel.coc_items]
+      .sort((a, b) => {
+        const aOrder = Number(a.sort_order ?? a.sortOrder ?? 9999);
+        const bOrder = Number(b.sort_order ?? b.sortOrder ?? 9999);
+        return aOrder - bOrder;
+      })
+      .filter(item => normalizeBinaryStatus(item.item_status) === '진행 중');
+  } else {
+    items = getLegacyCocItemsFromVessel(vessel);
   }
 
-  return lines.join('');
+  return items.map((item, idx) => {
+    const summaryText = String(item.coc_summary || '').trim();
+
+    return `
+      <div class="coc-inline-block">
+        <div class="coc-inline-top-row">
+          <div class="coc-inline-no">${idx + 1}</div>
+          <div class="coc-inline-type">${item.coc_type ? escapeHtml(item.coc_type) : '-'}</div>
+          <div class="coc-inline-date">${item.coc_due_date ? escapeHtml(item.coc_due_date) : '-'}</div>
+        </div>
+
+        ${summaryText ? `
+          <div class="coc-inline-summary-row">
+            <div class="coc-inline-summary-no"></div>
+            <div class="coc-inline-summary-text">${escapeHtml(summaryText)}</div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+function makeSireLines(vessel) {
+  let items = [];
+
+  if (Array.isArray(vessel.sire_items) && vessel.sire_items.length) {
+    items = [...vessel.sire_items]
+      .sort((a, b) => {
+        const aOrder = Number(a.sort_order ?? a.sortOrder ?? 9999);
+        const bOrder = Number(b.sort_order ?? b.sortOrder ?? 9999);
+        return aOrder - bOrder;
+      })
+      .filter(item => getSireLikeBucket(item.sire_status) === '진행 중');
+  } else {
+    items = getLegacySireItemsFromVessel(vessel)
+      .filter(item => getSireLikeBucket(item.sire_status) === '진행 중');
+  }
+
+  return items.map((item) => {
+    const statusText = String(item.sire_status || '').trim();
+    const statusHtml = statusText ? getSireStatusHtml(statusText) : '-';
+
+    const findingsRaw = String(item.sire_findings || '').trim();
+    const openFindingsRaw = String(item.sire_open_findings || '').trim();
+    const remarkText = String(item.sire_remark || '').trim();
+
+    const findingsText = findingsRaw ? `지적 ${escapeHtml(findingsRaw)}건` : '';
+    const openFindingsText = openFindingsRaw ? `잔여 ${escapeHtml(openFindingsRaw)}건` : '';
+
+    return `
+      <div class="survey-inline-block">
+        <div class="survey-inline-main-row">
+          <div class="survey-inline-main-cell">${surveyDisplayValue(item.sire_type)}</div>
+          <div class="survey-inline-main-cell">${statusHtml}</div>
+          <div class="survey-inline-main-cell">${surveyDisplayValue(item.sire_date)}</div>
+          <div class="survey-inline-main-cell">${findingsText}</div>
+          <div class="survey-inline-main-cell">${openFindingsText}</div>
+        </div>
+
+        ${remarkText ? `
+          <div class="survey-inline-remark-row-sire">
+            <div class="survey-inline-remark-spacer"></div>
+            <div class="survey-inline-remark-value survey-inline-remark-value-sire">
+              ${escapeHtml(remarkText)}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
 }
 
 
 function makeConditionReportLines(vessel) {
-  const type = String(vessel.condition_report_type || '').trim();
-  const date = String(vessel.condition_report_date || '').trim();
-  const status = String(vessel.condition_report_status || '').trim();
-  const findings = String(vessel.condition_report_findings || '').trim();
-  const openFindings = String(vessel.condition_report_open_findings || '').trim();
-  const remark = String(vessel.condition_report_remark || '').trim();
+  let items = [];
 
-  if (!type && !date && !status && !findings && !openFindings && !remark) {
-    return '';
+  if (Array.isArray(vessel.condition_items) && vessel.condition_items.length) {
+    items = [...vessel.condition_items]
+      .sort((a, b) => {
+        const aOrder = Number(a.sort_order ?? a.sortOrder ?? 9999);
+        const bOrder = Number(b.sort_order ?? b.sortOrder ?? 9999);
+        return aOrder - bOrder;
+      })
+      .filter(item => getSireLikeBucket(item.condition_status) === '진행 중');
+  } else {
+    items = getLegacyConditionItemsFromVessel(vessel)
+      .filter(item => getSireLikeBucket(item.condition_status) === '진행 중');
   }
 
-  let detail = '';
-  if (findings) detail += ` / 지적 ${escapeHtml(findings)}건`;
-  if (openFindings) detail += ` / 잔여 ${escapeHtml(openFindings)}건`;
-  if (remark) detail += ` / ${escapeHtml(remark)}`;
+  return items.map((item) => {
+    const statusText = String(item.condition_status || '').trim();
+    const statusHtml = statusText ? getSireStatusHtml(statusText) : '-';
 
-  return `
-    <div class="line issue-line">
-      <div class="line-label">1</div>
-      <div class="line-value">
-        ${type ? escapeHtml(type) : ''}
-        ${date ? ` / ${escapeHtml(date)}` : ''}
-        ${status ? ` / ${getSireStatusHtml(status)}` : ''}
-        ${detail}
+    const findingsRaw = String(item.condition_findings || '').trim();
+    const openFindingsRaw = String(item.condition_open_findings || '').trim();
+    const remarkText = String(item.condition_remark || '').trim();
+
+    const findingsText = findingsRaw ? `지적 ${escapeHtml(findingsRaw)}건` : '';
+    const openFindingsText = openFindingsRaw ? `잔여 ${escapeHtml(openFindingsRaw)}건` : '';
+
+    return `
+      <div class="survey-inline-block">
+        <div class="survey-inline-main-row">
+          <div class="survey-inline-main-cell">${surveyDisplayValue(item.condition_type)}</div>
+          <div class="survey-inline-main-cell">${statusHtml}</div>
+          <div class="survey-inline-main-cell">${surveyDisplayValue(item.condition_date)}</div>
+          <div class="survey-inline-main-cell">${findingsText}</div>
+          <div class="survey-inline-main-cell">${openFindingsText}</div>
+        </div>
+
+        ${remarkText ? `
+          <div class="survey-inline-remark-row-condition">
+            <div class="survey-inline-remark-spacer"></div>
+            <div class="survey-inline-remark-value survey-inline-remark-value-condition">
+              ${escapeHtml(remarkText)}
+            </div>
+          </div>
+        ` : ''}
       </div>
-    </div>
-  `;
+    `;
+  }).join('');
 }
-
 
 function getVesselColor(vessel) {
   const type = normalizeVesselType(vessel.vessel_type);
 
-  // 1순위: Container
   if (type === 'Container') {
     return 'green';
   }
 
-  // 2순위: Tanker 상태
   const cargo = normalizeCargoStatus(vessel.cargo_status);
 
   if (cargo === 'Loading') return 'orange';
@@ -574,11 +886,11 @@ function getShipIcon(vessel) {
   const colorType = getVesselColor(vessel);
 
   const fill = colorType === 'green'
-    ? '#22c55e'   // Container
+    ? '#22c55e'
     : colorType === 'orange'
-      ? '#f97316' // Tanker Loading
+      ? '#f97316'
       : colorType === 'yellow'
-        ? '#facc15' // Tanker Ballast
+        ? '#facc15'
         : '#94a3b8';
 
   return L.divIcon({
@@ -666,8 +978,6 @@ function getFilteredVessels() {
   return vessels;
 }
 
-
-
 function getReportViewUrl(vessel, reportKey) {
   const filename = vessel[reportKey];
   return filename ? `/uploads/reports/${encodeURIComponent(vessel[reportKey])}?_=${Date.now()}` : '';
@@ -717,8 +1027,6 @@ function makeReportsBlock(index, vessel) {
 
 
 
-
-
 function makeLabelHtml(vessel, index) {
   const cls = getVesselColor(vessel);
   const type = normalizeVesselType(vessel.vessel_type);
@@ -728,85 +1036,78 @@ function makeLabelHtml(vessel, index) {
     <div class="map-label ${cls}" data-index="${index}">
       <div class="title">${escapeHtml(vessel.name)}</div>
 
-      <div class="label-section">
-        ${makeOptionalLine('관리사', vessel.management_company)}
-        ${makeOptionalLine('관리사감독', vessel.management_supervisor)}
-        ${makeOptionalLine('운항담당자', vessel.operation_manager)}
-        ${makeOptionalLine('선주감독', vessel.owner_supervisor)}
-        ${makeOptionalLine('담당팀', vessel.team_name || vessel.teamName)}
-        ${makeOptionalLine('Type', type)}
-        ${makeOptionalLine('Size', vessel.size)}
-        ${makeOptionalLine('Builder', vessel.builder)}
-        ${makeOptionalLine('Delivery Date', vessel.delivery_date)}
-        ${makeOptionalLine('Next Dry dock', vessel.next_dry_dock)}
-        ${type === 'Tanker'
-          ? `<div class="line"><div class="line-label">Cargo</div><div class="line-value">${highlightCargoStatus(vessel.cargo_status)}</div></div>`
-          : ''}
-        ${makeOptionalLine('항차계획', vessel.voyage_plan)}
+      <div class="map-card-section">
+        <div class="map-card-section-title">기본정보</div>
+        <div class="map-card-section-body">
+          ${makeOptionalLine('관리사', vessel.management_company)}
+          ${makeOptionalLine('관리사감독', vessel.management_supervisor)}
+          ${makeOptionalLine('운항담당자', vessel.operation_manager)}
+          ${makeOptionalLine('선주감독', vessel.owner_supervisor)}
+          ${makeOptionalLine('담당팀', vessel.team_name || vessel.teamName)}
+          ${makeOptionalLine('Type', type)}
+          ${makeOptionalLine('Size', vessel.size)}
+          ${makeOptionalLine('Builder', vessel.builder)}
+          ${makeOptionalLine('Delivery Date', vessel.delivery_date)}
+          ${makeOptionalLine('Next Dry dock', vessel.next_dry_dock)}
+          ${type === 'Tanker'
+            ? `<div class="line"><div class="line-label">Cargo</div><div class="line-value">${highlightCargoStatus(vessel.cargo_status)}</div></div>`
+            : ''}
+          ${makeOptionalLine('항차계획', vessel.voyage_plan)}
+        </div>
       </div>
 
-      <div class="section-divider"></div>
-
-      <div class="label-section">
-        <div class="section-title">현안업무</div>
-        ${makeIssueLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+      <div class="map-card-section">
+        <div class="map-card-section-title">현안업무</div>
+        <div class="map-card-section-body">
+          ${makeIssueLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+        </div>
       </div>
 
-      <div class="section-divider"></div>
-
-      <div class="label-section">
-        <div class="section-title">COC 현황</div>
-        ${makeCocLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+      <div class="map-card-section">
+        <div class="map-card-section-title">COC 현황</div>
+        <div class="map-card-section-body">
+          ${makeCocLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+        </div>
       </div>
-
-      <div class="section-divider"></div>
 
       ${type === 'Tanker' ? `
-      <div class="label-section">
-        <div class="section-title">Sire 현황</div>
-        ${makeSireLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+      <div class="map-card-section">
+        <div class="map-card-section-title">Sire 현황</div>
+        <div class="map-card-section-body">
+          ${makeSireLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+        </div>
       </div>
-
-      <div class="section-divider"></div>
       ` : ''}
 
-      <div class="label-section">
-        <div class="section-title">Condition Report</div>
-        ${makeConditionReportLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+      <div class="map-card-section">
+        <div class="map-card-section-title">Condition Report</div>
+        <div class="map-card-section-body">
+          ${makeConditionReportLines(vessel) || `<div class="issue-empty">입력 없음</div>`}
+        </div>
       </div>
-      
 
-      <div class="section-divider"></div>
+      <div class="map-card-section">
+        <div class="map-card-section-title">Tech AOR 현황</div>
+        <div class="map-card-section-body">
+          <div class="aor-summary-row">
+            <div class="aor-summary-label">AOR 비용 청구</div>
+            <div class="aor-summary-count">${techAor.claimedCount}건</div>
+            <div class="aor-summary-amount">${formatUsd(techAor.claimedAmount)}</div>
+          </div>
 
+          <div class="aor-summary-row">
+            <div class="aor-summary-label">AOR 비용 미청구</div>
+            <div class="aor-summary-count">${techAor.unclaimedCount}건</div>
+            <div class="aor-summary-amount">${formatUsd(techAor.unclaimedAmount)}</div>
+          </div>
+        </div>
+      </div>
 
-
-
- <div class="label-section">
-  <div class="section-title">Tech AOR 현황</div>
-
-  <div class="aor-summary-row">
-    <div class="aor-summary-label">AOR 비용 청구</div>
-    <div class="aor-summary-count">${techAor.claimedCount}건</div>
-    <div class="aor-summary-amount">${formatUsd(techAor.claimedAmount)}</div>
-  </div>
-
-  <div class="aor-summary-row">
-    <div class="aor-summary-label">AOR 비용 미청구</div>
-    <div class="aor-summary-count">${techAor.unclaimedCount}건</div>
-    <div class="aor-summary-amount">${formatUsd(techAor.unclaimedAmount)}</div>
-  </div>
-</div>
-
-
-
-
-
-      <div class="section-divider"></div>
-
-
-      <div class="label-section">
-        <div class="section-title">Reports</div>
-        ${makeReportsBlock(index, vessel)}
+      <div class="map-card-section">
+        <div class="map-card-section-title">Reports</div>
+        <div class="map-card-section-body">
+          ${makeReportsBlock(index, vessel)}
+        </div>
       </div>
 
       <div class="map-label-actions">
@@ -815,13 +1116,6 @@ function makeLabelHtml(vessel, index) {
     </div>
   `;
 }
-
-
-
-
-
-
-
 
 function closeLabel() {
   labelMode = 'none';
@@ -865,6 +1159,7 @@ function updateToggleAllLabelsButton() {
     toggleAllLabelsBtn.classList.remove('active');
   }
 }
+
 function updateStatusBoard() {
   if (countAll) {
     countAll.textContent = `${vessels.length}척`;
@@ -955,21 +1250,22 @@ async function loadData(options = {}) {
 
     vessels = await response.json();
 
-
-
-
     if (!Array.isArray(vessels)) {
       vessels = [];
     }
 
     vessels = vessels.map(v => {
-const normalized = {
-  ...v,
-  vessel_type: normalizeVesselType(v.vessel_type || v.vesselType || 'Tanker'),
-  voyage_plan: v.voyage_plan || v.voyagePlan || '',
-  cargo_status: (v.vessel_type || v.vesselType) === 'Container' ? '' : normalizeCargoStatus(v.cargo_status),
-  team_name: v.team_name || v.teamName || ''
-};
+      const normalized = {
+        ...v,
+        vessel_type: normalizeVesselType(v.vessel_type || v.vesselType || 'Tanker'),
+        voyage_plan: v.voyage_plan || v.voyagePlan || '',
+        cargo_status: (v.vessel_type || v.vesselType) === 'Container' ? '' : normalizeCargoStatus(v.cargo_status),
+        team_name: v.team_name || v.teamName || '',
+        issue_items: Array.isArray(v.issue_items) ? v.issue_items : [],
+        coc_items: Array.isArray(v.coc_items) ? v.coc_items : [],
+        sire_items: Array.isArray(v.sire_items) ? v.sire_items : [],
+        condition_items: Array.isArray(v.condition_items) ? v.condition_items : []
+      };
 
       for (let i = 1; i <= 8; i++) {
         normalized[`report${i}_file`] = normalized[`report${i}_file`] || '';
@@ -981,7 +1277,7 @@ const normalized = {
         normalized[`coc_due_date_${i}`] = normalized[`coc_due_date_${i}`] || '';
       }
 
-      for (let i = 1; i <= SIRE_COUNT; i++) {
+      for (let i = 1; i <= 5; i++) {
         normalized[`sire_type_${i}`] = normalized[`sire_type_${i}`] || '';
         normalized[`sire_date_${i}`] = normalized[`sire_date_${i}`] || '';
         normalized[`sire_status_${i}`] = normalizeSireStatus(normalized[`sire_status_${i}`] || '');
@@ -1179,18 +1475,11 @@ async function uploadPositionExcel(file) {
     }
 
     showCustomAlert(message);
-
   } catch (error) {
     console.error('위치 업데이트 실패:', error);
     showCustomAlert('위치 업데이트 중 오류가 발생했습니다.');
   }
 }
-
-
-
-
-
-
 
 function clearMarkers() {
   markers.forEach(marker => map.removeLayer(marker));
@@ -1418,7 +1707,7 @@ function renderExternalLabels() {
   leftItems.sort((a, b) => a.point.y - b.point.y);
   rightItems.sort((a, b) => a.point.y - b.point.y);
 
-  const boxW = 310;
+  const boxW = 400;
   const boxH = 560;
   const gap = 10;
 
@@ -1486,11 +1775,10 @@ function renderList() {
 
     const item = document.createElement('div');
     item.className = 'vessel-item';
-item.innerHTML = `
-  <strong>${escapeHtml(vessel.name)}</strong>
-  <small>Type: ${escapeHtml(type)}</small>
-  <small>Team: ${escapeHtml(vessel.team_name || vessel.teamName || '')}</small>
-   
+    item.innerHTML = `
+      <strong>${escapeHtml(vessel.name)}</strong>
+      <small>Type: ${escapeHtml(type)}</small>
+      <small>Team: ${escapeHtml(vessel.team_name || vessel.teamName || '')}</small>
       <div class="actions">
         <button onclick="editVessel(${index})">수정</button>
         <button class="btn-delete" onclick="deleteVessel(${index})">삭제</button>
@@ -1520,48 +1808,15 @@ function resetForm() {
   setDateInputValue('deliveryDate', '');
   setDateInputValue('nextDryDock', '');
 
-  for (let i = 1; i <= 15; i++) {
-    const issueEl = document.getElementById(`issue${i}`);
-    const issueCriticalEl = document.getElementById(`issue${i}Critical`);
+  const issueSection = document.getElementById('issueSection');
+  if (issueSection) issueSection.innerHTML = '';
 
-    if (issueEl) issueEl.value = '';
-    if (issueCriticalEl) issueCriticalEl.checked = false;
-  }
-
-  for (let i = 1; i <= COC_COUNT; i++) {
-    const cocTypeEl = document.getElementById(`cocType${i}`);
-    const cocSummaryEl = document.getElementById(`cocSummary${i}`);
-
-    if (cocTypeEl) cocTypeEl.value = '';
-    if (cocSummaryEl) cocSummaryEl.value = '';
-    setDateInputValue(`cocDueDate${i}`, '');
-  }
-
-  for (let i = 1; i <= SIRE_COUNT; i++) {
-    const sireTypeEl = document.getElementById(`sireType${i}`);
-    const sireStatusEl = document.getElementById(`sireStatus${i}`);
-    const sireFindingsEl = document.getElementById(`sireFindings${i}`);
-    const sireOpenFindingsEl = document.getElementById(`sireOpenFindings${i}`);
-    const sireRemarkEl = document.getElementById(`sireRemark${i}`);
-
-    if (sireTypeEl) sireTypeEl.value = '';
-    if (sireStatusEl) sireStatusEl.value = '';
-    if (sireFindingsEl) sireFindingsEl.value = '';
-    if (sireOpenFindingsEl) sireOpenFindingsEl.value = '';
-    if (sireRemarkEl) sireRemarkEl.value = '';
-    setDateInputValue(`sireDate${i}`, '');
-  }
-
-  document.getElementById('conditionReportType').value = '';
-  setDateInputValue('conditionReportDate', '');
-  document.getElementById('conditionReportStatus').value = '';
-  document.getElementById('conditionReportFindings').value = '';
-  document.getElementById('conditionReportOpenFindings').value = '';
-  document.getElementById('conditionReportRemark').value = '';
+  if (cocDynamicSection) cocDynamicSection.innerHTML = '';
+  if (sireDynamicSection) sireDynamicSection.innerHTML = '';
+  if (conditionDynamicSection) conditionDynamicSection.innerHTML = '';
 
   managementCostRequestSeq += 1;
   resetManagementCostFields(false);
-  
 
   editIndex = null;
   activeLabelIndex = null;
@@ -1579,12 +1834,21 @@ function resetForm() {
     shipSearchDropdown.classList.remove('show');
   }
 
+  currentIssueFilter = '진행 중';
+  currentCocFilter = '진행 중';
+  currentSireFilter = '진행 중';
+  currentConditionFilter = '진행 중';
+
+  applyIssueFilter(currentIssueFilter);
+  applyCocFilter(currentCocFilter);
+  applySireFilter(currentSireFilter);
+  applyConditionFilter(currentConditionFilter);
+
   clearLabels();
   updateToggleAllLabelsButton();
   updateVesselTypeUI();
   renderExternalLabels();
 }
-
 
 function resetManagementCostFields(keepYear = true) {
   const currentYear = document.getElementById('opexContractYear')?.value || '';
@@ -1635,8 +1899,6 @@ function fillManagementCostFields(cost = {}) {
 
   document.getElementById('costRemark').value = cost.cost_remark || '';
 }
-
-
 
 async function loadManagementCostByYear() {
   const yearEl = document.getElementById('opexContractYear');
@@ -1718,7 +1980,7 @@ function focusVesselFromSearch(index) {
   renderList();
   renderMap(false);
 
-  fillFormByVessel(index);   // 추가
+  fillFormByVessel(index);
   map.setView([vessel.latitude, vessel.longitude], 5.5);
   labelMode = 'one';
   activeLabelIndex = index;
@@ -1730,6 +1992,8 @@ function focusVesselFromSearch(index) {
 }
 
 function renderSearchSuggestions(keyword) {
+  if (!shipSearchDropdown) return;
+
   const q = String(keyword || '').trim().toLowerCase();
   shipSearchDropdown.innerHTML = '';
 
@@ -1765,7 +2029,6 @@ function renderSearchSuggestions(keyword) {
   shipSearchDropdown.classList.add('show');
 }
 
-
 async function uploadManagementCostExcel(file) {
   const formData = new FormData();
   formData.append('file', file);
@@ -1799,11 +2062,103 @@ async function uploadManagementCostExcel(file) {
     }
 
     alert(msg);
-    await loadData({ preserveSelection: true, preserveZoom: true });
+    await loadData({ preserveSelection: true, fitBounds: false });
   } catch (error) {
     console.error(error);
     alert('관리사 비용 업로드 중 오류가 발생했습니다.');
   }
+}
+
+function getIssueCardStatus(card) {
+  const doneBtn = card.querySelector('.issue-status-btn[data-status="완료"]');
+  if (doneBtn?.classList.contains('active-done')) {
+    return '완료';
+  }
+  return '진행 중';
+}
+
+function applyIssueFilter(filterStatus = currentIssueFilter) {
+  currentIssueFilter = filterStatus;
+
+  const issueFilterProgressBtn = document.getElementById('issueFilterProgressBtn');
+  const issueFilterDoneBtn = document.getElementById('issueFilterDoneBtn');
+
+  if (issueFilterProgressBtn) {
+    issueFilterProgressBtn.classList.remove('active-progress', 'active-done');
+    if (currentIssueFilter === '진행 중') {
+      issueFilterProgressBtn.classList.add('active-progress');
+    }
+  }
+
+  if (issueFilterDoneBtn) {
+    issueFilterDoneBtn.classList.remove('active-progress', 'active-done');
+    if (currentIssueFilter === '완료') {
+      issueFilterDoneBtn.classList.add('active-done');
+    }
+  }
+
+  const cards = document.querySelectorAll('.issue-card.issue-only-card');
+  cards.forEach((card) => {
+    const cardStatus = getIssueCardStatus(card);
+    card.style.display = cardStatus === currentIssueFilter ? '' : 'none';
+  });
+}
+
+function applyCocFilter(filterStatus = currentCocFilter) {
+  currentCocFilter = normalizeBinaryStatus(filterStatus);
+
+  cocFilterProgressBtn?.classList.remove('active-progress');
+  cocFilterDoneBtn?.classList.remove('active-done');
+
+  if (currentCocFilter === '진행 중') {
+    cocFilterProgressBtn?.classList.add('active-progress');
+  } else {
+    cocFilterDoneBtn?.classList.add('active-done');
+  }
+
+  document.querySelectorAll('.coc-card').forEach((card) => {
+    const doneBtn = card.querySelector('.coc-status-btn[data-status="완료"]');
+    const status = doneBtn?.classList.contains('active-done') ? '완료' : '진행 중';
+    card.classList.toggle('hidden-by-filter', status !== currentCocFilter);
+  });
+}
+
+function applySireFilter(filterStatus = currentSireFilter) {
+  currentSireFilter = normalizeBinaryStatus(filterStatus);
+
+  sireFilterProgressBtn?.classList.remove('active-progress');
+  sireFilterDoneBtn?.classList.remove('active-done');
+
+  if (currentSireFilter === '진행 중') {
+    sireFilterProgressBtn?.classList.add('active-progress');
+  } else {
+    sireFilterDoneBtn?.classList.add('active-done');
+  }
+
+  document.querySelectorAll('.sire-card').forEach((card) => {
+    const status = card.querySelector('.sire-status-select')?.value || '예정';
+    const bucket = getSireLikeBucket(status);
+    card.classList.toggle('hidden-by-filter', bucket !== currentSireFilter);
+  });
+}
+
+function applyConditionFilter(filterStatus = currentConditionFilter) {
+  currentConditionFilter = normalizeBinaryStatus(filterStatus);
+
+  conditionFilterProgressBtn?.classList.remove('active-progress');
+  conditionFilterDoneBtn?.classList.remove('active-done');
+
+  if (currentConditionFilter === '진행 중') {
+    conditionFilterProgressBtn?.classList.add('active-progress');
+  } else {
+    conditionFilterDoneBtn?.classList.add('active-done');
+  }
+
+  document.querySelectorAll('.condition-card').forEach((card) => {
+    const status = card.querySelector('.condition-status-select')?.value || '예정';
+    const bucket = getSireLikeBucket(status);
+    card.classList.toggle('hidden-by-filter', bucket !== currentConditionFilter);
+  });
 }
 
 if (toggleAllLabelsBtn) {
@@ -1850,7 +2205,7 @@ if (shipSearchInput) {
 
       const foundIndex = vessels.findIndex(v => String(v.name || '').toLowerCase().includes(keyword));
       if (foundIndex >= 0) {
-        shipSearchDropdown.classList.remove('show');
+        shipSearchDropdown?.classList.remove('show');
         focusVesselFromSearch(foundIndex);
       }
     }
@@ -1906,13 +2261,13 @@ if (cocReportBtn) {
 
 if (sireReportBtn) {
   sireReportBtn.addEventListener('click', () => {
-    window.open(`/sire-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
+    window.open(`/sire-history-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
 
 if (conditionReportBtn) {
   conditionReportBtn.addEventListener('click', () => {
-    window.open(`/condition-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
+    window.open(`/condition-quarter-report?filter=${encodeURIComponent(currentFilter)}&_=${Date.now()}`, '_blank');
   });
 }
 
@@ -1922,14 +2277,11 @@ if (drydockReportBtn) {
   });
 }
 
-
-/* 여기에 추가 */
 if (managementCostReportBtn) {
   managementCostReportBtn.addEventListener('click', () => {
     showCostReportModal();
   });
 }
-
 
 if (form) {
   form.addEventListener('submit', async function (e) {
@@ -1948,106 +2300,46 @@ if (form) {
       managementSupervisor: document.getElementById('managementSupervisor').value.trim(),
       operationManager: document.getElementById('operationManager').value.trim(),
       ownerSupervisor: document.getElementById('ownerSupervisor').value,
-      
       teamName: document.getElementById('teamName').value,
-      
       builder: document.getElementById('builder').value.trim(),
       size: document.getElementById('size').value.trim(),
       deliveryDate: document.getElementById('deliveryDate').value,
       nextDryDock: document.getElementById('nextDryDock').value,
       voyagePlan: document.getElementById('voyagePlan').value.trim(),
       cargoStatus: document.getElementById('cargoStatus').value,
-
-      issue1: document.getElementById('issue1').value.trim(),
-      issue1Critical: document.getElementById('issue1Critical').checked,
-      issue2: document.getElementById('issue2').value.trim(),
-      issue2Critical: document.getElementById('issue2Critical').checked,
-      issue3: document.getElementById('issue3').value.trim(),
-      issue3Critical: document.getElementById('issue3Critical').checked,
-      issue4: document.getElementById('issue4').value.trim(),
-      issue4Critical: document.getElementById('issue4Critical').checked,
-      issue5: document.getElementById('issue5').value.trim(),
-      issue5Critical: document.getElementById('issue5Critical').checked,
-      issue6: document.getElementById('issue6').value.trim(),
-      issue6Critical: document.getElementById('issue6Critical').checked,
-      issue7: document.getElementById('issue7').value.trim(),
-      issue7Critical: document.getElementById('issue7Critical').checked,
-      issue8: document.getElementById('issue8').value.trim(),
-      issue8Critical: document.getElementById('issue8Critical').checked,
-      issue9: document.getElementById('issue9').value.trim(),
-      issue9Critical: document.getElementById('issue9Critical').checked,
-      issue10: document.getElementById('issue10').value.trim(),
-      issue10Critical: document.getElementById('issue10Critical').checked,
-      issue11: document.getElementById('issue11').value.trim(),
-      issue11Critical: document.getElementById('issue11Critical').checked,
-      issue12: document.getElementById('issue12').value.trim(),
-      issue12Critical: document.getElementById('issue12Critical').checked,
-      issue13: document.getElementById('issue13').value.trim(),
-      issue13Critical: document.getElementById('issue13Critical').checked,
-      issue14: document.getElementById('issue14').value.trim(),
-      issue14Critical: document.getElementById('issue14Critical').checked,
-      issue15: document.getElementById('issue15').value.trim(),
-      issue15Critical: document.getElementById('issue15Critical').checked,
-
+      issueItems: getIssueItemsForSave(),
+      cocItems: getCocItemsForSave(),
+      sireItems: getSireItemsForSave(),
+      conditionItems: getConditionItemsForSave(),
       latitude: latitudeValue === '' ? NaN : parseFloat(latitudeValue),
       longitude: longitudeValue === '' ? NaN : parseFloat(longitudeValue),
       _originalName: originalName
     };
 
-    for (let i = 1; i <= COC_COUNT; i++) {
-      vessel[`cocType${i}`] = document.getElementById(`cocType${i}`)?.value.trim() || '';
-      vessel[`cocSummary${i}`] = document.getElementById(`cocSummary${i}`)?.value.trim() || '';
-      vessel[`cocDueDate${i}`] = document.getElementById(`cocDueDate${i}`)?.value || '';
+    vessel.opexContractCrewAmount = normalizeMoneyForSave(document.getElementById('opexContractCrewAmount')?.value || '');
+    vessel.opexContractTechAmount = normalizeMoneyForSave(document.getElementById('opexContractTechAmount')?.value || '');
+    vessel.opexContractYear = document.getElementById('opexContractYear')?.value || '';
+    vessel.costRemark = document.getElementById('costRemark')?.value.trim() || '';
+
+    vessel.opexActualCrewCount = document.getElementById('opexActualCrewCount')?.value || '';
+    vessel.opexActualCrewAmount = normalizeMoneyForSave(document.getElementById('opexActualCrewAmount')?.value || '');
+    vessel.opexActualTechCount = document.getElementById('opexActualTechCount')?.value || '';
+    vessel.opexActualTechAmount = normalizeMoneyForSave(document.getElementById('opexActualTechAmount')?.value || '');
+
+    vessel.aorActualCrewCount = document.getElementById('aorActualCrewCount')?.value || '';
+    vessel.aorActualCrewAmount = normalizeMoneyForSave(document.getElementById('aorActualCrewAmount')?.value || '');
+    vessel.aorActualTechCount = document.getElementById('aorActualTechCount')?.value || '';
+    vessel.aorActualTechAmount = normalizeMoneyForSave(document.getElementById('aorActualTechAmount')?.value || '');
+
+    vessel.aorUnclaimedCrewCount = document.getElementById('aorUnclaimedCrewCount')?.value || '';
+    vessel.aorUnclaimedCrewAmount = normalizeMoneyForSave(document.getElementById('aorUnclaimedCrewAmount')?.value || '');
+    vessel.aorUnclaimedTechCount = document.getElementById('aorUnclaimedTechCount')?.value || '';
+    vessel.aorUnclaimedTechAmount = normalizeMoneyForSave(document.getElementById('aorUnclaimedTechAmount')?.value || '');
+
+    if (currentVesselType === 'Container') {
+      vessel.cargoStatus = '';
+      vessel.sireItems = [];
     }
-
-    for (let i = 1; i <= SIRE_COUNT; i++) {
-      vessel[`sireType${i}`] = document.getElementById(`sireType${i}`)?.value.trim() || '';
-      vessel[`sireDate${i}`] = document.getElementById(`sireDate${i}`)?.value || '';
-      vessel[`sireStatus${i}`] = document.getElementById(`sireStatus${i}`)?.value || '';
-      vessel[`sireFindings${i}`] = document.getElementById(`sireFindings${i}`)?.value || '';
-      vessel[`sireOpenFindings${i}`] = document.getElementById(`sireOpenFindings${i}`)?.value || '';
-      vessel[`sireRemark${i}`] = document.getElementById(`sireRemark${i}`)?.value || '';
-    }
-
-    vessel.conditionReportType = document.getElementById('conditionReportType')?.value.trim() || '';
-    vessel.conditionReportDate = document.getElementById('conditionReportDate')?.value || '';
-    vessel.conditionReportStatus = document.getElementById('conditionReportStatus')?.value || '';
-    vessel.conditionReportFindings = document.getElementById('conditionReportFindings')?.value || '';
-    vessel.conditionReportOpenFindings = document.getElementById('conditionReportOpenFindings')?.value || '';
-    vessel.conditionReportRemark = document.getElementById('conditionReportRemark')?.value || '';
-
-
-vessel.opexContractCrewAmount = normalizeMoneyForSave(document.getElementById('opexContractCrewAmount')?.value || '');
-vessel.opexContractTechAmount = normalizeMoneyForSave(document.getElementById('opexContractTechAmount')?.value || '');
-vessel.opexContractYear = document.getElementById('opexContractYear')?.value || '';
-vessel.costRemark = document.getElementById('costRemark')?.value.trim() || '';
-
-vessel.opexActualCrewCount = document.getElementById('opexActualCrewCount')?.value || '';
-vessel.opexActualCrewAmount = normalizeMoneyForSave(document.getElementById('opexActualCrewAmount')?.value || '');
-vessel.opexActualTechCount = document.getElementById('opexActualTechCount')?.value || '';
-vessel.opexActualTechAmount = normalizeMoneyForSave(document.getElementById('opexActualTechAmount')?.value || '');
-
-vessel.aorActualCrewCount = document.getElementById('aorActualCrewCount')?.value || '';
-vessel.aorActualCrewAmount = normalizeMoneyForSave(document.getElementById('aorActualCrewAmount')?.value || '');
-vessel.aorActualTechCount = document.getElementById('aorActualTechCount')?.value || '';
-vessel.aorActualTechAmount = normalizeMoneyForSave(document.getElementById('aorActualTechAmount')?.value || '');
-
-vessel.aorUnclaimedCrewCount = document.getElementById('aorUnclaimedCrewCount')?.value || '';
-vessel.aorUnclaimedCrewAmount = normalizeMoneyForSave(document.getElementById('aorUnclaimedCrewAmount')?.value || '');
-vessel.aorUnclaimedTechCount = document.getElementById('aorUnclaimedTechCount')?.value || '';
-vessel.aorUnclaimedTechAmount = normalizeMoneyForSave(document.getElementById('aorUnclaimedTechAmount')?.value || '');
-
-if (currentVesselType === 'Container') {
-  vessel.cargoStatus = '';
-
-  for (let i = 1; i <= SIRE_COUNT; i++) {
-    vessel[`sireType${i}`] = '';
-    vessel[`sireDate${i}`] = '';
-    vessel[`sireStatus${i}`] = '';
-    vessel[`sireFindings${i}`] = '';
-    vessel[`sireOpenFindings${i}`] = '';
-  }
-}
 
     if (!vessel.name) {
       alert('선박명은 반드시 입력해야 합니다.');
@@ -2081,7 +2373,7 @@ if (currentVesselType === 'Container') {
       editIndex = null;
     }
 
-    renderSearchSuggestions(shipSearchInput.value.trim());
+    renderSearchSuggestions(shipSearchInput?.value.trim() || '');
   });
 }
 
@@ -2119,7 +2411,6 @@ if (costReportModal) {
   });
 }
 
-
 if (resetBtn) {
   resetBtn.addEventListener('click', () => {
     resetForm();
@@ -2143,7 +2434,391 @@ if (managementCostUploadBtn && managementCostExcelInput) {
   });
 }
 
+function renderIssueCardsFromVessel(vessel) {
+  const issueSection = document.getElementById('issueSection');
+  if (!issueSection) return;
 
+  const issueItems = Array.isArray(vessel.issue_items) ? [...vessel.issue_items] : [];
+
+  issueItems.sort((a, b) => {
+    const aOrder = Number(a.sort_order ?? a.sortOrder ?? 9999);
+    const bOrder = Number(b.sort_order ?? b.sortOrder ?? 9999);
+    return aOrder - bOrder;
+  });
+
+  issueSection.innerHTML = issueItems.map((item) => {
+    const text = item.issue_text || item.issueText || '';
+    const isCritical = Number(item.is_critical ?? item.isCritical ?? 0) === 1 || item.is_critical === true;
+    const status = String(item.issue_status || item.issueStatus || '진행 중').trim();
+
+    return `
+      <div class="issue-card issue-only-card">
+        <div class="issue-card-title">현안업무</div>
+
+        <div class="issue-card-body">
+          <textarea class="issue-textarea issue-text" rows="3">${escapeHtml(text)}</textarea>
+        </div>
+
+        <div class="issue-meta-row">
+          <div class="issue-meta-cell">CRITICAL</div>
+          <div class="issue-meta-cell">
+            <label class="issue-critical-label">
+              <input type="checkbox" class="issue-critical" ${isCritical ? 'checked' : ''}>
+              <span>체크</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="issue-status-row">
+          <button type="button" class="issue-status-btn ${status === '진행 중' ? 'active-progress' : ''}" data-status="진행 중">진행 중</button>
+          <button type="button" class="issue-status-btn ${status === '완료' ? 'active-done' : ''}" data-status="완료">완료</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  applyIssueFilter(currentIssueFilter);
+}
+
+function renderCocCardsFromVessel(vessel) {
+  if (!cocDynamicSection) return;
+
+  let items = Array.isArray(vessel.coc_items) ? [...vessel.coc_items] : [];
+  if (!items.length) {
+    items = getLegacyCocItemsFromVessel(vessel);
+  }
+
+  items.sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+
+  cocDynamicSection.innerHTML = items.map((item) => {
+    const status = normalizeBinaryStatus(item.item_status);
+    return `
+      <div class="issue-card coc-card">
+        <div class="issue-card-title">COC 현황</div>
+
+        <div class="issue-card-body">
+          <div class="dynamic-card-grid-2">
+            <div class="dynamic-card-field">
+              <label>증서종류</label>
+              <input type="text" class="coc-type" value="${escapeHtml(item.coc_type || '')}">
+            </div>
+            <div class="dynamic-card-field">
+              <label>Due Date</label>
+              <input type="text" class="date-field coc-due-date" placeholder="날짜" data-date-input value="${escapeHtml(item.coc_due_date || '')}">
+            </div>
+          </div>
+
+          <div class="dynamic-card-field">
+            <label>요약</label>
+            <textarea class="coc-summary" rows="3">${escapeHtml(item.coc_summary || '')}</textarea>
+          </div>
+        </div>
+
+        <div class="issue-status-row">
+          <button type="button" class="issue-status-btn coc-status-btn ${status === '진행 중' ? 'active-progress' : ''}" data-status="진행 중">진행 중</button>
+          <button type="button" class="issue-status-btn coc-status-btn ${status === '완료' ? 'active-done' : ''}" data-status="완료">완료</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  setupDateInputs();
+  applyCocFilter(currentCocFilter);
+}
+
+
+function renderSireCardsFromVessel(vessel) {
+  if (!sireDynamicSection) return;
+
+  let items = Array.isArray(vessel.sire_items) ? [...vessel.sire_items] : [];
+  if (!items.length) {
+    items = getLegacySireItemsFromVessel(vessel);
+  }
+
+  items.sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+
+  sireDynamicSection.innerHTML = items.map((item) => `
+    <div class="issue-card sire-card">
+      <div class="issue-card-title">Sire 현황</div>
+
+      <div class="issue-card-body">
+        <div class="dynamic-card-grid-2">
+          <div class="dynamic-card-field">
+            <label>Sire 종류</label>
+            <input type="text" class="sire-type" value="${escapeHtml(item.sire_type || '')}">
+          </div>
+          <div class="dynamic-card-field">
+            <label>상태</label>
+            <select class="sire-status-select sire-like-status-select">
+              <option value="예정" ${String(item.sire_status || '') === '예정' ? 'selected' : ''}>예정</option>
+              <option value="결함조치 중" ${String(item.sire_status || '') === '결함조치 중' ? 'selected' : ''}>결함조치 중</option>
+              <option value="수검완료" ${String(item.sire_status || '') === '수검완료' ? 'selected' : ''}>수검완료</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dynamic-card-field">
+          <label>날짜</label>
+          <input type="text" class="date-field sire-date" placeholder="날짜" data-date-input value="${escapeHtml(item.sire_date || '')}">
+        </div>
+
+        <div class="dynamic-card-grid-2">
+          <div class="dynamic-card-field">
+            <label>지적사항 몇건</label>
+            <input type="number" min="0" class="sire-findings" value="${escapeHtml(item.sire_findings || '')}">
+          </div>
+          <div class="dynamic-card-field">
+            <label>잔여지적사항 몇건</label>
+            <input type="number" min="0" class="sire-open-findings" value="${escapeHtml(item.sire_open_findings || '')}">
+          </div>
+        </div>
+
+        <div class="dynamic-card-field">
+          <label>특이사항</label>
+          <textarea class="sire-remark" rows="3">${escapeHtml(item.sire_remark || '')}</textarea>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  setupDateInputs();
+  applySireFilter(currentSireFilter);
+}
+
+
+
+function renderConditionCardsFromVessel(vessel) {
+  if (!conditionDynamicSection) return;
+
+  let items = Array.isArray(vessel.condition_items) ? [...vessel.condition_items] : [];
+  if (!items.length) {
+    items = getLegacyConditionItemsFromVessel(vessel);
+  }
+
+  items.sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+
+  conditionDynamicSection.innerHTML = items.map((item) => `
+    <div class="issue-card condition-card">
+      <div class="issue-card-title">Condition Report</div>
+
+      <div class="issue-card-body">
+        <div class="dynamic-card-grid-2">
+          <div class="dynamic-card-field">
+            <label>종류</label>
+            <input type="text" class="condition-type" value="${escapeHtml(item.condition_type || '')}">
+          </div>
+          <div class="dynamic-card-field">
+            <label>상태</label>
+            <select class="condition-status-select sire-like-status-select">
+              <option value="예정" ${String(item.condition_status || '') === '예정' ? 'selected' : ''}>예정</option>
+              <option value="결함조치 중" ${String(item.condition_status || '') === '결함조치 중' ? 'selected' : ''}>결함조치 중</option>
+              <option value="수검완료" ${String(item.condition_status || '') === '수검완료' ? 'selected' : ''}>수검완료</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dynamic-card-field">
+          <label>날짜</label>
+          <input type="text" class="date-field condition-date" placeholder="날짜" data-date-input value="${escapeHtml(item.condition_date || '')}">
+        </div>
+
+        <div class="dynamic-card-grid-2">
+          <div class="dynamic-card-field">
+            <label>지적사항 몇건</label>
+            <input type="number" min="0" class="condition-findings" value="${escapeHtml(item.condition_findings || '')}">
+          </div>
+          <div class="dynamic-card-field">
+            <label>잔여지적사항 몇건</label>
+            <input type="number" min="0" class="condition-open-findings" value="${escapeHtml(item.condition_open_findings || '')}">
+          </div>
+        </div>
+
+        <div class="dynamic-card-field">
+          <label>특이사항</label>
+          <textarea class="condition-remark" rows="3">${escapeHtml(item.condition_remark || '')}</textarea>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  setupDateInputs();
+  applyConditionFilter(currentConditionFilter);
+}
+
+
+function addIssueCard() {
+  const issueSection = document.getElementById('issueSection');
+  if (!issueSection) return;
+
+  const card = document.createElement('div');
+  card.className = 'issue-card issue-only-card';
+  card.innerHTML = `
+    <div class="issue-card-title">현안업무</div>
+
+    <div class="issue-card-body">
+      <textarea class="issue-textarea issue-text" rows="3"></textarea>
+    </div>
+
+    <div class="issue-meta-row">
+      <div class="issue-meta-cell">CRITICAL</div>
+      <div class="issue-meta-cell">
+        <label class="issue-critical-label">
+          <input type="checkbox" class="issue-critical">
+          <span>체크</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="issue-status-row">
+      <button type="button" class="issue-status-btn active-progress" data-status="진행 중">진행 중</button>
+      <button type="button" class="issue-status-btn" data-status="완료">완료</button>
+    </div>
+  `;
+
+  issueSection.appendChild(card);
+  applyIssueFilter(currentIssueFilter);
+}
+
+function addCocCard() {
+  if (!cocDynamicSection) return;
+
+  const card = document.createElement('div');
+  card.className = 'issue-card coc-card';
+  card.innerHTML = `
+    <div class="issue-card-title">COC 현황</div>
+
+    <div class="issue-card-body">
+      <div class="dynamic-card-grid-2">
+        <div class="dynamic-card-field">
+          <label>증서종류</label>
+          <input type="text" class="coc-type">
+        </div>
+        <div class="dynamic-card-field">
+          <label>Due Date</label>
+          <input type="text" class="date-field coc-due-date" placeholder="날짜" data-date-input>
+        </div>
+      </div>
+
+      <div class="dynamic-card-field">
+        <label>요약</label>
+        <textarea class="coc-summary" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="issue-status-row">
+      <button type="button" class="issue-status-btn coc-status-btn active-progress" data-status="진행 중">진행 중</button>
+      <button type="button" class="issue-status-btn coc-status-btn" data-status="완료">완료</button>
+    </div>
+  `;
+  cocDynamicSection.appendChild(card);
+  setupDateInputs();
+  applyCocFilter(currentCocFilter);
+}
+
+
+function addSireCard() {
+  if (!sireDynamicSection) return;
+
+  const card = document.createElement('div');
+  card.className = 'issue-card sire-card';
+  card.innerHTML = `
+    <div class="issue-card-title">Sire 현황</div>
+
+    <div class="issue-card-body">
+      <div class="dynamic-card-grid-2">
+        <div class="dynamic-card-field">
+          <label>Sire 종류</label>
+          <input type="text" class="sire-type">
+        </div>
+        <div class="dynamic-card-field">
+          <label>상태</label>
+          <select class="sire-status-select sire-like-status-select">
+            <option value="예정" selected>예정</option>
+            <option value="결함조치 중">결함조치 중</option>
+            <option value="수검완료">수검완료</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dynamic-card-field">
+        <label>날짜</label>
+        <input type="text" class="date-field sire-date" placeholder="날짜" data-date-input>
+      </div>
+
+      <div class="dynamic-card-grid-2">
+        <div class="dynamic-card-field">
+          <label>지적사항 몇건</label>
+          <input type="number" min="0" class="sire-findings">
+        </div>
+        <div class="dynamic-card-field">
+          <label>잔여지적사항 몇건</label>
+          <input type="number" min="0" class="sire-open-findings">
+        </div>
+      </div>
+
+      <div class="dynamic-card-field">
+        <label>특이사항</label>
+        <textarea class="sire-remark" rows="3"></textarea>
+      </div>
+    </div>
+  `;
+  sireDynamicSection.appendChild(card);
+  setupDateInputs();
+  applySireFilter(currentSireFilter);
+}
+
+
+
+function addConditionCard() {
+  if (!conditionDynamicSection) return;
+
+  const card = document.createElement('div');
+  card.className = 'issue-card condition-card';
+  card.innerHTML = `
+    <div class="issue-card-title">Condition Report</div>
+
+    <div class="issue-card-body">
+      <div class="dynamic-card-grid-2">
+        <div class="dynamic-card-field">
+          <label>종류</label>
+          <input type="text" class="condition-type">
+        </div>
+        <div class="dynamic-card-field">
+          <label>상태</label>
+          <select class="condition-status-select sire-like-status-select">
+            <option value="예정" selected>예정</option>
+            <option value="결함조치 중">결함조치 중</option>
+            <option value="수검완료">수검완료</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dynamic-card-field">
+        <label>날짜</label>
+        <input type="text" class="date-field condition-date" placeholder="날짜" data-date-input>
+      </div>
+
+      <div class="dynamic-card-grid-2">
+        <div class="dynamic-card-field">
+          <label>지적사항 몇건</label>
+          <input type="number" min="0" class="condition-findings">
+        </div>
+        <div class="dynamic-card-field">
+          <label>잔여지적사항 몇건</label>
+          <input type="number" min="0" class="condition-open-findings">
+        </div>
+      </div>
+
+      <div class="dynamic-card-field">
+        <label>특이사항</label>
+        <textarea class="condition-remark" rows="3"></textarea>
+      </div>
+    </div>
+  `;
+  conditionDynamicSection.appendChild(card);
+  setupDateInputs();
+  applyConditionFilter(currentConditionFilter);
+}
 
 function fillFormByVessel(index) {
   const vessel = vessels[index];
@@ -2163,42 +2838,10 @@ function fillFormByVessel(index) {
   document.getElementById('voyagePlan').value = vessel.voyage_plan || '';
   document.getElementById('cargoStatus').value = normalizeCargoStatus(vessel.cargo_status);
 
-  for (let i = 1; i <= 15; i++) {
-    document.getElementById(`issue${i}`).value = vessel[`issue_${i}`] || '';
-    document.getElementById(`issue${i}Critical`).checked = Number(vessel[`issue_${i}_critical`] || 0) === 1;
-  }
-
-  for (let i = 1; i <= COC_COUNT; i++) {
-    const cocTypeEl = document.getElementById(`cocType${i}`);
-    const cocSummaryEl = document.getElementById(`cocSummary${i}`);
-
-    if (cocTypeEl) cocTypeEl.value = vessel[`coc_type_${i}`] || '';
-    if (cocSummaryEl) cocSummaryEl.value = vessel[`coc_summary_${i}`] || '';
-    setDateInputValue(`cocDueDate${i}`, vessel[`coc_due_date_${i}`] || '');
-  }
-
-  for (let i = 1; i <= SIRE_COUNT; i++) {
-    const sireTypeEl = document.getElementById(`sireType${i}`);
-    const sireStatusEl = document.getElementById(`sireStatus${i}`);
-    const sireFindingsEl = document.getElementById(`sireFindings${i}`);
-    const sireOpenFindingsEl = document.getElementById(`sireOpenFindings${i}`);
-    const sireRemarkEl = document.getElementById(`sireRemark${i}`);
-    
-
-    if (sireTypeEl) sireTypeEl.value = vessel[`sire_type_${i}`] || '';
-    if (sireStatusEl) sireStatusEl.value = vessel[`sire_status_${i}`] || '';
-    if (sireFindingsEl) sireFindingsEl.value = vessel[`sire_findings_${i}`] || '';
-    if (sireOpenFindingsEl) sireOpenFindingsEl.value = vessel[`sire_open_findings_${i}`] || '';
-    if (sireRemarkEl) sireRemarkEl.value = vessel[`sire_remark_${i}`] || '';
-    setDateInputValue(`sireDate${i}`, vessel[`sire_date_${i}`] || '');
-  }
-
-  document.getElementById('conditionReportType').value = vessel.condition_report_type || '';
-  setDateInputValue('conditionReportDate', vessel.condition_report_date || '');
-  document.getElementById('conditionReportStatus').value = vessel.condition_report_status || '';
-  document.getElementById('conditionReportFindings').value = vessel.condition_report_findings || '';
-  document.getElementById('conditionReportOpenFindings').value = vessel.condition_report_open_findings || '';
-  document.getElementById('conditionReportRemark').value = vessel.condition_report_remark || '';
+  renderIssueCardsFromVessel(vessel);
+  renderCocCardsFromVessel(vessel);
+  renderSireCardsFromVessel(vessel);
+  renderConditionCardsFromVessel(vessel);
 
   const yearEl = document.getElementById('opexContractYear');
   if (yearEl && !yearEl.value) {
@@ -2219,8 +2862,6 @@ function fillFormByVessel(index) {
   } else {
     resetManagementCostFields(true);
   }
-
-
 }
 
 window.editVessel = function (index) {
@@ -2270,6 +2911,8 @@ window.viewReportFile = function (index, reportKey) {
   window.open(url, '_blank');
 };
 
+window.closeLabel = closeLabel;
+
 map.on('zoomend moveend resize', () => {
   renderExternalLabels();
   setTimeout(updateLeaderLines, 30);
@@ -2296,11 +2939,107 @@ setInterval(() => {
   }
 }, 600000);
 
+document.addEventListener('click', (e) => {
+  const statusBtn = e.target.closest('.issue-status-btn');
+  if (!statusBtn) return;
 
+  const issueCard = statusBtn.closest('.issue-card');
+  if (!issueCard) return;
 
+  if (issueCard.classList.contains('coc-card') || issueCard.classList.contains('sire-card') || issueCard.classList.contains('condition-card')) {
+    return;
+  }
+
+  const progressBtn = issueCard.querySelector('.issue-status-btn[data-status="진행 중"]');
+  const doneBtn = issueCard.querySelector('.issue-status-btn[data-status="완료"]');
+
+  progressBtn?.classList.remove('active-progress');
+  doneBtn?.classList.remove('active-done');
+
+  if (statusBtn.dataset.status === '진행 중') {
+    progressBtn?.classList.add('active-progress');
+  }
+
+  if (statusBtn.dataset.status === '완료') {
+    doneBtn?.classList.add('active-done');
+  }
+
+  applyIssueFilter(currentIssueFilter);
+});
+
+document.addEventListener('click', (e) => {
+  const cocStatusBtn = e.target.closest('.coc-status-btn');
+  if (!cocStatusBtn) return;
+
+  const card = cocStatusBtn.closest('.coc-card');
+  if (!card) return;
+
+  const progressBtn = card.querySelector('.coc-status-btn[data-status="진행 중"]');
+  const doneBtn = card.querySelector('.coc-status-btn[data-status="완료"]');
+
+  progressBtn?.classList.remove('active-progress');
+  doneBtn?.classList.remove('active-done');
+
+  if (cocStatusBtn.dataset.status === '진행 중') progressBtn?.classList.add('active-progress');
+  if (cocStatusBtn.dataset.status === '완료') doneBtn?.classList.add('active-done');
+
+  applyCocFilter(currentCocFilter);
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.matches('.sire-status-select')) {
+    applySireFilter(currentSireFilter);
+  }
+
+  if (e.target.matches('.condition-status-select')) {
+    applyConditionFilter(currentConditionFilter);
+  }
+});
+
+const addIssueBtn = document.getElementById('addIssueBtn');
+if (addIssueBtn) {
+  addIssueBtn.addEventListener('click', addIssueCard);
+}
+
+const issueFilterProgressBtn = document.getElementById('issueFilterProgressBtn');
+const issueFilterDoneBtn = document.getElementById('issueFilterDoneBtn');
+
+if (issueFilterProgressBtn && issueFilterDoneBtn) {
+  issueFilterProgressBtn.addEventListener('click', () => {
+    applyIssueFilter('진행 중');
+  });
+
+  issueFilterDoneBtn.addEventListener('click', () => {
+    applyIssueFilter('완료');
+  });
+}
+
+if (addCocBtn) addCocBtn.addEventListener('click', addCocCard);
+if (addSireBtn) addSireBtn.addEventListener('click', addSireCard);
+if (addConditionBtn) addConditionBtn.addEventListener('click', addConditionCard);
+
+if (cocFilterProgressBtn) cocFilterProgressBtn.addEventListener('click', () => applyCocFilter('진행 중'));
+if (cocFilterDoneBtn) cocFilterDoneBtn.addEventListener('click', () => applyCocFilter('완료'));
+
+if (sireFilterProgressBtn) sireFilterProgressBtn.addEventListener('click', () => applySireFilter('진행 중'));
+if (sireFilterDoneBtn) sireFilterDoneBtn.addEventListener('click', () => applySireFilter('완료'));
+
+if (conditionFilterProgressBtn) conditionFilterProgressBtn.addEventListener('click', () => applyConditionFilter('진행 중'));
+if (conditionFilterDoneBtn) conditionFilterDoneBtn.addEventListener('click', () => applyConditionFilter('완료'));
 
 setupDateInputs();
 bindMoneyInputs();
 updateVesselTypeUI();
 initAccordion();
+
+currentIssueFilter = issueFilterDoneBtn?.classList.contains('active-done') ? '완료' : '진행 중';
+currentCocFilter = cocFilterDoneBtn?.classList.contains('active-done') ? '완료' : '진행 중';
+currentSireFilter = sireFilterDoneBtn?.classList.contains('active-done') ? '완료' : '진행 중';
+currentConditionFilter = conditionFilterDoneBtn?.classList.contains('active-done') ? '완료' : '진행 중';
+
+applyIssueFilter(currentIssueFilter);
+applyCocFilter(currentCocFilter);
+applySireFilter(currentSireFilter);
+applyConditionFilter(currentConditionFilter);
+
 loadData({ preserveSelection: true, fitBounds: true });

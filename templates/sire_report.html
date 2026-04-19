@@ -5,8 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sire Report</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+
+  <style>
+   .report-issue-filter {
+      margin-bottom: 16px;
+    }
+
+    .report-issue-filter .issue-filter-btn {
+      color: #334155 !important;
+      font-weight: 800;
+      background: #e5e7eb !important;
+      border: 1px solid #94a3b8;
+      transition: all 0.15s ease;
+    }
+
+    .report-issue-filter .issue-filter-btn:hover {
+      background: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+
+    .report-issue-filter .issue-filter-btn.active-progress {
+      background: #1e3a5f !important;
+      color: #ffffff !important;
+      border-color: #1e3a5f !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+    }
+
+    .report-issue-filter .issue-filter-btn.active-done {
+      background: #1e3a5f !important;
+      color: #ffffff !important;
+      border-color: #1e3a5f !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+
+    .report-summary-card.info {
+      border-top: 3px solid #2563eb;
+    }
+
+    .report-summary-grid.report-summary-grid-wide {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .report-summary-grid.report-summary-grid-wide .report-summary-card {
+      min-width: 0;
+      margin: 0;
+    }
+
+    @media (max-width: 1200px) {
+      .report-summary-grid.report-summary-grid-wide {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .report-summary-grid.report-summary-grid-wide {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+
 </head>
 <body class="report-page-body">
+  {% set view_status = current_status if current_status else '진행 중' %}
+
   <div class="report-page report-page-wide">
     <div class="report-header">
       <div>
@@ -15,25 +80,50 @@
       </div>
 
       <div class="report-actions">
+        <button
+          class="report-action-btn"
+          onclick="location.href='{{ url_for('sire_history_report_page', filter=current_filter) }}'">
+          수검이력
+        </button>
         <button class="report-action-btn" onclick="window.print()">인쇄</button>
         <button class="report-action-btn secondary" onclick="window.close()">닫기</button>
       </div>
     </div>
 
-    <div class="report-summary-grid">
+    <div class="issue-top-filter report-issue-filter">
+      <button
+        type="button"
+        class="issue-filter-btn {% if view_status == '진행 중' %}active-progress{% endif %}"
+        onclick="changeReportStatus('진행 중')">
+        진행 중
+      </button>
+      <button
+        type="button"
+        class="issue-filter-btn {% if view_status == '완료' %}active-done{% endif %}"
+        onclick="changeReportStatus('완료')">
+        완료
+      </button>
+    </div>
+
+    <div class="report-summary-grid report-summary-grid-wide">
       <div class="report-summary-card report-summary-card-main">
-        <div class="label">전체 선박</div>
+        <div class="label">전체선박</div>
         <div class="value">{{ total_count }}</div>
       </div>
 
-      <div class="report-summary-card">
-        <div class="label">SIRE 보유 선박</div>
-        <div class="value">{{ sire_vessel_count }}</div>
+      <div class="report-summary-card info">
+        <div class="label">예정 선박</div>
+        <div class="value">{{ planned_count }}</div>
       </div>
 
       <div class="report-summary-card warning">
-        <div class="label">Sire 진행중 선박</div>
-        <div class="value">{{ sire_progress_count }}</div>
+        <div class="label">결함조치 중 선박</div>
+        <div class="value">{{ progress_count }}</div>
+      </div>
+
+      <div class="report-summary-card good">
+        <div class="label">완료 선박</div>
+        <div class="value">{{ done_count }}</div>
       </div>
     </div>
 
@@ -82,5 +172,13 @@
       </table>
     </div>
   </div>
+
+  <script>
+    function changeReportStatus(status) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('status', status);
+      window.location.href = url.toString();
+    }
+  </script>
 </body>
 </html>

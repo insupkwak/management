@@ -11,7 +11,7 @@ body {
 
 .container {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: 450px 1fr;
   height: 100vh;
 }
 
@@ -75,9 +75,13 @@ textarea {
 }
 
 textarea {
-  resize: vertical;
-  min-height: 60px;
   font-family: Arial, sans-serif;
+}
+
+.issue-text,
+.issue-textarea,
+.issue-card textarea {
+  resize: none !important;
 }
 
 button {
@@ -1626,31 +1630,21 @@ button:hover {
   }
 }
 
-
 .footer {
   margin-top: auto;
-  padding: 60px 5px 5px;   /* 위 여백 더 줌 */
+  padding: 60px 5px 5px;
   text-align: center;
   font-size: 12px;
   color: #9ca3af;
   border-top: 1px solid #374151;
   opacity: 0.8;
-
-  white-space: nowrap;       /* 🔥 줄바꿈 방지 */
+  white-space: nowrap;
 }
-
 
 .footer:hover {
   opacity: 1;
 }
 
-
-.report-external-links {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 10px;
-}
 
 .report-link-btn {
   display: block;
@@ -1668,42 +1662,878 @@ button:hover {
   background: var(--primary-hover);
 }
 
-/* 담당감독업무 링크 버튼 */
 .report-external-links {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-top: 10px;
 }
 
-/* 버튼 스타일 */
 .report-link-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-
   height: 44px;
   border-radius: 10px;
-
-  background: #374151;
+  background: #1e3a5f;
   color: white;
-
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
-
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   transition: all 0.2s ease;
 }
 
-/* hover */
 .report-link-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0,0,0,0.35);
   opacity: 0.95;
 }
 
-/* 클릭 느낌 */
 .report-link-btn:active {
   transform: scale(0.97);
+}
+
+
+
+
+/* =========================
+   현안업무 전체 교체본
+========================= */
+
+.issue-top-filter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid #475569;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.issue-filter-btn {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+
+.issue-filter-btn + .issue-filter-btn {
+  border-left: 1px solid #475569;
+}
+
+.issue-filter-btn.active-progress {
+  background: #347f38;
+  color: #0f172a;
+}
+
+.issue-filter-btn.active-done {
+  background: #347f38;
+  color: #0f172a;
+}
+
+
+
+.issue-dynamic-list,
+#issueSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.issue-card {
+  border: 1px solid #475569;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.issue-card-title {
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8fafc;
+  border-bottom: 1px solid #475569;
+}
+
+.issue-card-body {
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.issue-text,
+.issue-textarea,
+.issue-card textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  height: 84px !important;
+  min-height: 84px !important;
+  max-height: 84px !important;
+  padding: 12px;
+  border: 1px solid #4b5563;
+  border-radius: 12px;
+  background: #0b1733;
+  color: #f8fafc;
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: Arial, sans-serif;
+  resize: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.issue-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  border-top: 1px solid #475569;
+}
+
+.issue-meta-cell {
+  min-height: 30px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.issue-meta-cell + .issue-meta-cell {
+  border-left: 1px solid #475569;
+}
+
+
+
+
+
+
+
+
+.issue-critical-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.issue-critical-label span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.issue-critical,
+.issue-critical-label input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 13px;
+  accent-color: #2563eb;
+  vertical-align: middle;
+}
+
+.issue-check-btn {
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #d8eefc;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-sizing: border-box;
+  appearance: none;
+}
+
+.issue-check-btn + .issue-check-btn {
+  border-left: 1px solid #475569;
+}
+
+.issue-check-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+.issue-check-grid {
+  grid-template-rows: 24px 40px;
+}
+
+.issue-check-head {
+  min-height: 24px;
+  height: 24px;
+  padding: 1px 4px;
+}
+
+.issue-critical-label {
+  font-size: 11px;
+}
+
+.issue-critical,
+.issue-critical-label input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+
+
+
+
+
+
+.issue-status-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  border-top: 1px solid #475569;
+}
+
+.issue-status-btn {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 30px;
+  min-height: 30px;
+  max-height: 30px;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 14px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.issue-status-btn + .issue-status-btn {
+  border-left: 1px solid #475569;
+}
+
+.issue-status-btn.active-progress {
+  background: #3677c7;
+  color: #0f172a;
+}
+
+.issue-status-btn.active-done {
+  background: #3677c7;
+  color: #0f172a;
+}
+
+.issue-add-btn,
+#addIssueBtn {
+  width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin-top: 14px;
+  border-radius: 12px;
+  background: #374151;
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.issue-add-btn:hover,
+#addIssueBtn:hover {
+  background: #4b5563;
+}
+
+.issue-empty-message {
+  text-align: center;
+  padding: 14px 10px;
+  color: #94a3b8;
+  font-size: 13px;
+  border: 1px dashed #475569;
+  border-radius: 12px;
+}
+
+
+.dynamic-card-grid-2,
+.dynamic-card-grid-3 {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dynamic-card-grid-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.dynamic-card-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.dynamic-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dynamic-card-field label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f8fafc;
+  opacity: 0.9;
+}
+
+.dynamic-card-field input,
+.dynamic-card-field select,
+.dynamic-card-field textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dynamic-card-field textarea {
+  resize: vertical;
+  min-height: 74px;
+}
+
+.dynamic-card-spacer {
+  height: 2px;
+}
+
+.sire-like-status-select {
+  height: 44px;
+}
+
+.hidden-by-filter {
+  display: none !important;
+}
+
+
+
+
+
+/* =========================
+   지도 상세카드 가독성 개선 - 조정용 주석 버전
+   아래 숫자만 바꾸면서 맞춰보세요
+========================= */
+
+.map-label {
+  padding: 11px 12px 10px;   /* 카드 전체 안쪽 여백
+                                 첫번째=위, 두번째=좌우, 세번째=아래
+                                 세로를 더 줄이고 싶으면 11,10 값을 줄이기 */
+  border-radius: 16px;       /* 카드 둥글기 */
+  font-size: 11px;           /* 카드 기본 글자 크기 */
+  line-height: 1.28;         /* 전체 줄간격, 작을수록 더 촘촘 */
+}
+
+.map-label .title {
+  font-size: 16px;           /* 선박명 글자 크기 */
+  font-weight: 900;
+  margin-bottom: 10px;       /* 선박명 아래 여백 */
+  color: #111827;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
+}
+
+.map-card-section {
+  margin-bottom: 12px;       /* 섹션과 섹션 사이 아래 간격 */
+}
+
+.map-card-section:last-of-type {
+  margin-bottom: 5px;        /* 마지막 섹션 아래 간격 */
+}
+
+.map-card-section + .map-card-section {
+  border-top: 1px solid rgba(148, 163, 184, 0.30);
+  padding-top: 8px;          /* 다음 섹션 시작 여백 */
+}
+
+.map-card-section-title {
+  display: flex;
+  align-items: center;
+  min-height: 30px;              /* 제목바 높이 */
+  padding: 0 9px;                /* 제목바 좌우 여백 */
+  margin-bottom: 6px;            /* 제목바와 본문 사이 간격 */
+  background: rgba(15, 23, 42, 0.07);
+  border-left: 4px solid #94a3b8; /* 기본색, 아래 상태별 색으로 덮어씀 */
+  border-radius: 7px;
+  font-size: 11.5px;             /* 제목 글자 크기 */
+  font-weight: 900;
+  color: #111827;
+  line-height: 1;
+}
+
+/* =========================
+   제목 왼쪽 색상 = 안내판 색상과 동일
+   필요시 아래 색상코드만 바꾸면 됩니다
+========================= */
+
+.map-label.green .map-card-section-title {
+  border-left-color: #22c55e;    /* green 안내판 */
+}
+
+.map-label.orange .map-card-section-title {
+  border-left-color: #f97316;    /* orange 안내판 */
+}
+
+.map-label.yellow .map-card-section-title {
+  border-left-color: #eab308;    /* yellow 안내판 */
+}
+
+.map-label.gray .map-card-section-title {
+  border-left-color: #94a3b8;    /* gray 안내판 */
+}
+
+/* yellow 안내판 배경이 없으면 같이 맞춰주기 */
+.map-label.yellow {
+  border-color: #eab308;
+  background: #fefce8;
+}
+
+.map-card-section-body {
+  padding: 0 1px;            /* 섹션 본문 좌우 안쪽 여백 */
+}
+
+.map-card-section .line {
+  display: grid;
+  grid-template-columns: 92px 1fr;  /* 왼쪽 항목명 너비 / 오른쪽 값
+                                        항목명이 길면 92px를 늘리기
+                                        공간이 부족하면 줄이기 */
+  gap: 8px;                  /* 항목명과 값 사이 간격 */
+  align-items: start;
+  margin-bottom: 3px;        /* 한 줄과 다음 줄 사이 간격 */
+}
+
+.map-card-section .line-label {
+  text-align: left;
+  font-weight: 800;
+  color: #475569;
+  font-size: 11px;           /* 왼쪽 항목명 글자 크기 */
+  line-height: 1.22;
+}
+
+.map-card-section .line-value {
+  text-align: left;
+  color: #111827;
+  font-weight: 700;
+  font-size: 11px;           /* 오른쪽 값 글자 크기 */
+  line-height: 1.22;
+}
+
+.map-card-section .issue-line {
+  display: grid;
+  grid-template-columns: 15px 1fr;  /* 번호칸 / 내용칸 */
+  gap: 6px;
+  align-items: start;
+  margin-bottom: 4px;        /* 현안업무, COC, SIRE 줄 사이 여백 */
+}
+
+.map-card-section .issue-empty {
+  padding: 1px 0;
+  font-size: 10.5px;         /* "입력 없음" 크기 */
+  color: #94a3b8;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.map-card-section .aor-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 40px 82px;  /* 항목 / 건수 / 금액 너비
+                                             금액이 잘리면 마지막 82px를 늘리기 */
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;            /* AOR 각 줄 위아래 여백 */
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.30);
+}
+
+.map-card-section .aor-summary-row:last-child {
+  border-bottom: none;
+}
+
+.map-card-section .aor-summary-label {
+  font-weight: 700;
+  color: #334155;
+  text-align: left;
+  font-size: 10.8px;
+  line-height: 1.15;
+}
+
+.map-card-section .aor-summary-count {
+  font-weight: 700;
+  color: #334155;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 10.5px;
+  line-height: 1.15;
+}
+
+.map-card-section .aor-summary-amount {
+  text-align: right;
+  font-weight: 900;
+  color: #1d4ed8;
+  white-space: nowrap;
+  font-size: 10.8px;
+  line-height: 1.15;
+}
+
+.map-card-section .reports-block {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;                  /* Reports 각 줄 사이 간격 */
+}
+
+.map-card-section .report-row-compact {
+  display: grid;
+  grid-template-columns: 108px 1fr;  /* 보고서명 칸 / 버튼 영역
+                                         보고서명이 길면 108px를 늘리기 */
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;          /* 각 report 줄 위쪽 여백 */
+}
+
+.map-card-section .report-left {
+  font-size: 10.8px;         /* Reports 왼쪽 이름 글자 크기 */
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.15;
+}
+
+.map-card-section .report-right {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;                  /* 보기 / 업로드 버튼 사이 간격 */
+  width: 100%;
+}
+
+.map-card-section .report-half-btn {
+  height: 26px;              /* report 버튼 높이 */
+  border-radius: 8px;
+  font-size: 10.5px;         /* report 버튼 글자 크기 */
+  font-weight: 800;
+  padding: 0;
+}
+
+.map-label-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;           /* 마지막 섹션과 닫기버튼 사이 간격 */
+  padding-top: 7px;          /* 닫기버튼 영역 위쪽 여백 */
+  border-top: 1px solid rgba(148, 163, 184, 0.30);
+}
+
+.map-mini-btn {
+  min-width: 44px;           /* 닫기버튼 최소 너비 */
+  padding: 5px 9px;          /* 닫기버튼 안쪽 여백 */
+  font-size: 10.5px;         /* 닫기버튼 글자 크기 */
+  border-radius: 8px;
+}
+
+.map-mini-btn.close {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.map-mini-btn.close:hover {
+  background: #1d4ed8;
+}
+
+.map-card-section .line-value.map-value-red {
+  color: #dc2626 !important;
+  font-weight: 900;
+}
+
+/* =========================
+   Sire / Condition
+   첫줄 5칸
+========================= */
+
+.survey-inline-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 2px 0 5px;
+}
+
+.survey-inline-block + .survey-inline-block {
+  margin-top: 7px;
+}
+
+.survey-inline-main-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1.0fr 1.0fr 1.0fr 1.0fr;
+  gap: 4px;
+  align-items: center;
+}
+
+.survey-inline-main-cell {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.survey-inline-main-cell .sire-status-scheduled {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.survey-inline-main-cell .sire-status-progress {
+  color: #ea580c;
+  font-weight: 600;
+}
+
+.survey-inline-main-cell .sire-status-done,
+.survey-inline-main-cell .sire-status-complete {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+/* 기존 특이사항 공통 */
+.survey-inline-remark-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.survey-inline-remark-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #64748b;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.survey-inline-remark-value {
+  font-size: 10.8px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* =========================
+   SIRE 전용
+   특이사항 소제목 제거
+   내용 시작을 상태(결함조치 중) 아래로 정렬
+========================= */
+
+.survey-inline-remark-row-sire {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  align-items: start;
+}
+
+.survey-inline-remark-spacer {
+  min-height: 1px;
+}
+
+.survey-inline-remark-value-sire {
+  grid-column: 2 / 6;   /* 상태 칸 아래부터 시작 */
+  font-weight: 600;
+  color: #111827;
+}
+
+
+
+/* =========================
+   Condition Report 전용
+   특이사항 소제목 제거
+   내용 시작을 상태 칸 아래로 정렬
+========================= */
+
+.survey-inline-remark-row-condition {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  align-items: start;
+}
+
+.survey-inline-remark-value-condition {
+  grid-column: 2 / 6;   /* 상태 칸 아래부터 시작 */
+  font-weight: 600;
+  color: #111827;
+}
+
+
+/* =========================
+   COC 현황 안내판 표시
+   첫줄: 증서종류 / 날짜
+   둘째줄: 요약 내용만
+========================= */
+
+.coc-inline-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 5px;
+}
+
+.coc-inline-block + .coc-inline-block {
+  margin-top: 6px;
+}
+
+.coc-inline-top-row {
+  display: grid;
+  grid-template-columns: 15px 1fr 92px;
+  gap: 8px;
+  align-items: center;
+}
+
+.coc-inline-no {
+  font-size: 11px;
+  font-weight: 800;
+  color: #334155;
+  line-height: 1.2;
+}
+
+.coc-inline-type {
+  font-size: 11px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coc-inline-date {
+  font-size: 10.6px;
+  font-weight: 600;
+  color: #2563eb;
+  line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.coc-inline-summary-row {
+  display: grid;
+  grid-template-columns: 15px 1fr 92px;
+  gap: 8px;
+  align-items: start;
+}
+
+.coc-inline-summary-spacer {
+  min-height: 1px;
+}
+
+.coc-inline-summary-text {
+  grid-column: 2 / 4;   /* 번호칸 다음부터 시작 */
+  font-size: 10.7px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+
+
+/* =========================
+   안내판 스크롤바 길이/위치 보정
+   맨 아래에 추가
+========================= */
+
+.map-label {
+  padding-right: 14px;              /* 스크롤바가 카드 끝에 너무 붙지 않게 */
+  scrollbar-gutter: stable;         /* 내용 흔들림 방지 */
+  scrollbar-color: #c7b9a3 transparent; /* Firefox */
+}
+
+/* Chrome, Edge */
+.map-label::-webkit-scrollbar {
+  width: 10px;                      /* 스크롤바 두께 */
+}
+
+.map-label::-webkit-scrollbar-track {
+  background: transparent;          /* 트랙 배경 제거 */
+  margin: 12px 0;                   /* 위아래 길이 줄이기 */
+  border-radius: 999px;
+}
+
+.map-label::-webkit-scrollbar-thumb {
+  background: #c7b9a3;
+  border-radius: 999px;
+  border: 2px solid transparent;    /* thumb를 조금 더 짧고 가볍게 보이게 */
+  background-clip: padding-box;
+  min-height: 42px;
+}
+
+.map-label::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.report-upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.report-upload-btn {
+  width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .report-upload-grid {
+    grid-template-columns: 1fr;
+  }
 }

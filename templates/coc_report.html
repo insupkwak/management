@@ -5,8 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>COC Report</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+
+  <style>
+    .report-issue-filter {
+      margin-bottom: 16px;
+    }
+
+    .report-issue-filter .issue-filter-btn {
+      color: #334155 !important;
+      font-weight: 800;
+      background: #e5e7eb !important;
+      border: 1px solid #94a3b8;
+      transition: all 0.15s ease;
+    }
+
+    .report-issue-filter .issue-filter-btn:hover {
+      background: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+
+    .report-issue-filter .issue-filter-btn.active-progress {
+      background: #1e3a5f  !important;
+      color: #ffffff !important;
+      border-color: #1e3a5f  !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+    }
+
+    .report-issue-filter .issue-filter-btn.active-done {
+      background: #1e3a5f  !important;
+      color: #ffffff !important;
+      border-color: #1e3a5f  !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+  </style>
 </head>
 <body class="report-page-body">
+  {% set view_status = current_status if current_status else '진행 중' %}
+
   <div class="report-page report-page-wide">
     <div class="report-header">
       <div>
@@ -20,65 +55,94 @@
       </div>
     </div>
 
-<div class="report-summary-grid report-summary-grid-wide">
-  <div class="report-summary-card report-summary-card-main">
-    <div class="label">전체선박</div>
-    <div class="value">{{ total_count }}</div>
-  </div>
+    <div class="issue-top-filter report-issue-filter">
+      <button
+        type="button"
+        class="issue-filter-btn {% if view_status == '진행 중' %}active-progress{% endif %}"
+        onclick="changeReportStatus('진행 중')">
+        진행 중
+      </button>
+      <button
+        type="button"
+        class="issue-filter-btn {% if view_status == '완료' %}active-done{% endif %}"
+        onclick="changeReportStatus('완료')">
+        완료
+      </button>
+    </div>
 
-  <div class="report-summary-card info">
-    <div class="label">COC 보유선박</div>
-    <div class="value">{{ coc_count }}</div>
-  </div>
+    <div class="report-summary-grid report-summary-grid-wide">
+      <div class="report-summary-card report-summary-card-main">
+        <div class="label">전체선박</div>
+        <div class="value">{{ total_count }}</div>
+      </div>
 
-  <div class="report-summary-card danger">
-    <div class="label">Due Date 1개월 내</div>
-    <div class="value">{{ due_soon_count }}</div>
-  </div>
-</div>
+      <div class="report-summary-card info">
+        <div class="label">COC 보유선박</div>
+        <div class="value">{{ coc_count }}</div>
+      </div>
+
+      <div class="report-summary-card danger">
+        <div class="label">Due Date 1개월 내</div>
+        <div class="value">{{ due_soon_count }}</div>
+      </div>
+    </div>
 
     <div class="report-table-wrap">
-  <table class="report-table coc-report-table">
-  <colgroup>
-    <col class="col-name">
-    <col class="col-type">
-    <col class="col-mgmt">
-    <col class="col-owner">
-    <col class="col-no">
-    <col class="col-cert">
-    <col class="col-summary">
-    <col class="col-due">
-  </colgroup>
-    <thead>
-      <tr>
-        <th class="coc-name-col">선박명</th>
-        <th>Type</th>
-        <th>관리사</th>
-        <th>선주감독</th>
-        <th>No.</th>
-        <th>증서종류</th>
-        <th class="coc-summary-col">요약</th>
-        <th class="coc-due-col">Due Date</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in report_rows %}
-      <tr>
-        <td class="left strong coc-name-cell">{{ row.name }}</td>
-        <td>{{ row.vessel_type }}</td>
-        <td class="left">{{ row.management_company }}</td>
-        <td>{{ row.owner_supervisor }}</td>
-        <td>{{ row.coc_no }}</td>
-        <td class="left">{{ row.coc_type }}</td>
-        <td class="left coc-summary-cell">{{ row.coc_summary }}</td>
-        <td class="due-date-cell coc-due-cell {% if row.is_due_soon %}due-red{% endif %}">
-          {{ row.coc_due_date }}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+      <table class="report-table coc-report-table">
+        <colgroup>
+          <col class="col-name">
+          <col class="col-type">
+          <col class="col-mgmt">
+          <col class="col-owner">
+          <col class="col-no">
+          <col class="col-cert">
+          <col class="col-summary">
+          <col class="col-due">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="coc-name-col">선박명</th>
+            <th>Type</th>
+            <th>관리사</th>
+            <th>선주감독</th>
+            <th>No.</th>
+            <th>증서종류</th>
+            <th class="coc-summary-col">요약</th>
+            <th class="coc-due-col">Due Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if report_rows %}
+            {% for row in report_rows %}
+            <tr>
+              <td class="left strong coc-name-cell">{{ row.name }}</td>
+              <td>{{ row.vessel_type }}</td>
+              <td class="left">{{ row.management_company }}</td>
+              <td>{{ row.owner_supervisor }}</td>
+              <td>{{ row.coc_no }}</td>
+              <td class="left">{{ row.coc_type }}</td>
+              <td class="left coc-summary-cell">{{ row.coc_summary }}</td>
+              <td class="due-date-cell coc-due-cell {% if row.is_due_soon %}due-red{% endif %}">
+                {{ row.coc_due_date }}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align:center;">데이터가 없습니다.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
   </div>
+
+  <script>
+    function changeReportStatus(status) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('status', status);
+      window.location.href = url.toString();
+    }
+  </script>
 </body>
 </html>

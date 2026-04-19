@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Condition 분기별 현황</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+
+  <style>
+    .condition-quarter-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .condition-quarter-table thead tr:first-child th {
+      background: #334155;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 15px;
+      border: 1px solid #475569;
+      padding: 14px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .condition-quarter-table thead tr:nth-child(2) th {
+      background: #3b4a61;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid #475569;
+      padding: 12px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .condition-quarter-table tbody td {
+      border: 1px solid #cbd5e1;
+      padding: 12px 8px;
+      text-align: center;
+      vertical-align: middle;
+      word-break: break-word;
+      background: #ffffff;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .condition-quarter-table tbody tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .condition-quarter-table tbody td:first-child {
+      font-weight: 800;
+    }
+
+    .condition-quarter-table .ship-col {
+    width: 240px !important;
+  min-width: 240px;
+  max-width: 240px;
+}
+
+    .condition-quarter-table .type-col {
+      width: 150px;
+    }
+
+    .condition-quarter-table .date-col {
+      width: 110px;
+    }
+
+    .condition-quarter-table .status-col {
+      width: 90px;
+    }
+
+    @media print {
+      .report-actions {
+        display: none !important;
+      }
+
+      .report-page {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="report-page-body">
+  <div class="report-page report-page-wide">
+    <div class="report-header">
+      <div>
+        <h1>Condition Report</h1>
+        <div class="report-subtitle">선박별 Condition Report 분기별 현황</div>
+      </div>
+
+      <div class="report-actions">
+        <button
+          class="report-action-btn"
+          onclick="location.href='{{ url_for('condition_report_page', filter=current_filter) }}'">
+          상세 현황
+        </button>
+        <button class="report-action-btn" onclick="window.print()">인쇄</button>
+        <button class="report-action-btn secondary" onclick="window.close()">닫기</button>
+      </div>
+    </div>
+
+    <div class="report-table-wrap">
+      <table class="report-table condition-quarter-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="ship-col">선명</th>
+            <th colspan="3">1분기</th>
+            <th colspan="3">2분기</th>
+            <th colspan="3">3분기</th>
+            <th colspan="3">4분기</th>
+          </tr>
+          <tr>
+            <th class="type-col">Condition 종류</th>
+            <th class="date-col">date</th>
+            <th class="status-col">status</th>
+
+            <th class="type-col">Condition 종류</th>
+            <th class="date-col">date</th>
+            <th class="status-col">status</th>
+
+            <th class="type-col">Condition 종류</th>
+            <th class="date-col">date</th>
+            <th class="status-col">status</th>
+
+            <th class="type-col">Condition 종류</th>
+            <th class="date-col">date</th>
+            <th class="status-col">status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if report_rows %}
+            {% for row in report_rows %}
+            <tr>
+              <td>{{ row.name }}</td>
+
+              <td>{{ row.q1_type }}</td>
+              <td>{{ row.q1_date }}</td>
+              <td>{{ row.q1_status }}</td>
+
+              <td>{{ row.q2_type }}</td>
+              <td>{{ row.q2_date }}</td>
+              <td>{{ row.q2_status }}</td>
+
+              <td>{{ row.q3_type }}</td>
+              <td>{{ row.q3_date }}</td>
+              <td>{{ row.q3_status }}</td>
+
+              <td>{{ row.q4_type }}</td>
+              <td>{{ row.q4_date }}</td>
+              <td>{{ row.q4_status }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="13" style="text-align:center;">데이터가 없습니다.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

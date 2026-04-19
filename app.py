@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from management_cost_excel import aggregate_management_cost_excel
+from calendar import monthrange
 
 from flask import (
     Flask,
@@ -50,6 +51,7 @@ DELETE_PASSWORD = "cmt2"
 
 COC_COUNT = 10
 SIRE_COUNT = 3
+ISSUE_STATUS_VALUES = {"진행 중", "완료"}
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
@@ -72,6 +74,7 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA journal_mode=WAL")
         g.db.execute("PRAGMA busy_timeout = 30000")
+        g.db.execute("PRAGMA foreign_keys = ON")
     return g.db
 
 
@@ -178,7 +181,611 @@ def ensure_drydock_report_table(conn: sqlite3.Connection) -> None:
         )
     """)
 
+def ensure_trip_schedule_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS trip_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            supervisor_name TEXT NOT NULL DEFAULT '',
+            start_date TEXT NOT NULL DEFAULT '',
+            end_date TEXT NOT NULL DEFAULT '',
+            reason TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
+
+def add_months_to_date(value, months: int):
+    year = value.year + ((value.month - 1 + months) // 12)
+    month = ((value.month - 1 + months) % 12) + 1
+    day = min(value.day, monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def get_trip_schedule_visible_range() -> tuple[str, str]:
+    start_date = datetime.now().date()
+    end_date = add_months_to_date(start_date, 6) - timedelta(days=1)
+    return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+
+
+
+
+def normalize_issue_status(value: Any) -> str:
+    text = str(value or "").strip()
+    if text == "완료":
+        return "완료"
+    return "진행 중"
+
+
+def normalize_work_status(value: Any) -> str:
+    text = str(value or "").strip()
+    if text == "완료":
+        return "완료"
+    return "진행 중"
+
+
+def normalize_sire_like_status(value: Any) -> str:
+    text = str(value or "").strip()
+    if text in VALID_SIRE_STATUS:
+        return text
+    return "예정"
+
+
+def bucket_from_sire_like_status(value: Any) -> str:
+    text = normalize_sire_like_status(value)
+    if text == "수검완료":
+        return "완료"
+    return "진행 중"
+
+
+def ensure_coc_items_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vessel_coc_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vessel_id INTEGER NOT NULL,
+            coc_type TEXT NOT NULL DEFAULT '',
+            coc_summary TEXT NOT NULL DEFAULT '',
+            coc_due_date TEXT NOT NULL DEFAULT '',
+            item_status TEXT NOT NULL DEFAULT '진행 중',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON DELETE CASCADE
+        )
+    """)
+
+
+def ensure_sire_items_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vessel_sire_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vessel_id INTEGER NOT NULL,
+            sire_type TEXT NOT NULL DEFAULT '',
+            sire_date TEXT NOT NULL DEFAULT '',
+            sire_status TEXT NOT NULL DEFAULT '예정',
+            sire_findings TEXT NOT NULL DEFAULT '',
+            sire_open_findings TEXT NOT NULL DEFAULT '',
+            sire_remark TEXT NOT NULL DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON DELETE CASCADE
+        )
+    """)
+
+
+def ensure_condition_items_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vessel_condition_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vessel_id INTEGER NOT NULL,
+            condition_type TEXT NOT NULL DEFAULT '',
+            condition_date TEXT NOT NULL DEFAULT '',
+            condition_status TEXT NOT NULL DEFAULT '예정',
+            condition_findings TEXT NOT NULL DEFAULT '',
+            condition_open_findings TEXT NOT NULL DEFAULT '',
+            condition_remark TEXT NOT NULL DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON DELETE CASCADE
+        )
+    """)
+
+
+def ensure_issue_items_table(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vessel_issue_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vessel_id INTEGER NOT NULL,
+            issue_text TEXT NOT NULL DEFAULT '',
+            is_critical INTEGER NOT NULL DEFAULT 0,
+            issue_status TEXT NOT NULL DEFAULT '진행 중',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(vessel_id) REFERENCES vessels(id) ON DELETE CASCADE
+        )
+    """)
+
+
+def get_issue_items_by_vessel_id(vessel_id: int, status: str | None = None) -> list[dict[str, Any]]:
+    db = get_db()
+
+    if status:
+        rows = db.execute("""
+            SELECT id, vessel_id, issue_text, is_critical, issue_status, sort_order
+            FROM vessel_issue_items
+            WHERE vessel_id = ? AND issue_status = ?
+            ORDER BY sort_order ASC, id ASC
+        """, (vessel_id, normalize_issue_status(status))).fetchall()
+    else:
+        rows = db.execute("""
+            SELECT id, vessel_id, issue_text, is_critical, issue_status, sort_order
+            FROM vessel_issue_items
+            WHERE vessel_id = ?
+            ORDER BY sort_order ASC, id ASC
+        """, (vessel_id,)).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def get_coc_items_by_vessel_id(vessel_id: int) -> list[dict[str, Any]]:
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, vessel_id, coc_type, coc_summary, coc_due_date, item_status, sort_order
+        FROM vessel_coc_items
+        WHERE vessel_id = ?
+        ORDER BY sort_order ASC, id ASC
+    """, (vessel_id,)).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_sire_items_by_vessel_id(vessel_id: int) -> list[dict[str, Any]]:
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, vessel_id, sire_type, sire_date, sire_status, sire_findings,
+               sire_open_findings, sire_remark, sort_order
+        FROM vessel_sire_items
+        WHERE vessel_id = ?
+        ORDER BY sort_order ASC, id ASC
+    """, (vessel_id,)).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_condition_items_by_vessel_id(vessel_id: int) -> list[dict[str, Any]]:
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, vessel_id, condition_type, condition_date, condition_status,
+               condition_findings, condition_open_findings, condition_remark, sort_order
+        FROM vessel_condition_items
+        WHERE vessel_id = ?
+        ORDER BY sort_order ASC, id ASC
+    """, (vessel_id,)).fetchall()
+    return [dict(row) for row in rows]
+
+
+def sanitize_issue_items(raw_items: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+
+    sanitized: list[dict[str, Any]] = []
+
+    for idx, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        issue_text = str(item.get("issueText", "")).strip()
+        if not issue_text:
+            continue
+
+        sanitized.append({
+            "issue_text": issue_text,
+            "is_critical": 1 if item.get("isCritical") else 0,
+            "issue_status": normalize_issue_status(item.get("issueStatus")),
+            "sort_order": idx,
+        })
+
+    return sanitized
+
+
+def sanitize_coc_items(raw_items: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+
+    sanitized: list[dict[str, Any]] = []
+
+    for idx, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        coc_type = str(item.get("cocType", "")).strip()
+        coc_summary = str(item.get("cocSummary", "")).strip()
+        coc_due_date = str(item.get("cocDueDate", "")).strip()
+        item_status = normalize_work_status(item.get("itemStatus"))
+
+        if not (coc_type or coc_summary or coc_due_date):
+            continue
+
+        sanitized.append({
+            "coc_type": coc_type,
+            "coc_summary": coc_summary,
+            "coc_due_date": coc_due_date,
+            "item_status": item_status,
+            "sort_order": idx,
+        })
+
+    return sanitized
+
+
+def sanitize_sire_items(raw_items: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+
+    sanitized: list[dict[str, Any]] = []
+
+    for idx, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        sire_type = str(item.get("sireType", "")).strip()
+        sire_date = str(item.get("sireDate", "")).strip()
+        sire_status = normalize_sire_like_status(item.get("sireStatus"))
+        sire_findings = str(item.get("sireFindings", "")).strip()
+        sire_open_findings = str(item.get("sireOpenFindings", "")).strip()
+        sire_remark = str(item.get("sireRemark", "")).strip()
+
+        if not (sire_type or sire_date or sire_findings or sire_open_findings or sire_remark):
+            continue
+
+        sanitized.append({
+            "sire_type": sire_type,
+            "sire_date": sire_date,
+            "sire_status": sire_status,
+            "sire_findings": sire_findings,
+            "sire_open_findings": sire_open_findings,
+            "sire_remark": sire_remark,
+            "sort_order": idx,
+        })
+
+    return sanitized
+
+
+def sanitize_condition_items(raw_items: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+
+    sanitized: list[dict[str, Any]] = []
+
+    for idx, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        condition_type = str(item.get("conditionType", "")).strip()
+        condition_date = str(item.get("conditionDate", "")).strip()
+        condition_status = normalize_sire_like_status(item.get("conditionStatus"))
+        condition_findings = str(item.get("conditionFindings", "")).strip()
+        condition_open_findings = str(item.get("conditionOpenFindings", "")).strip()
+        condition_remark = str(item.get("conditionRemark", "")).strip()
+
+        if not (condition_type or condition_date or condition_findings or condition_open_findings or condition_remark):
+            continue
+
+        sanitized.append({
+            "condition_type": condition_type,
+            "condition_date": condition_date,
+            "condition_status": condition_status,
+            "condition_findings": condition_findings,
+            "condition_open_findings": condition_open_findings,
+            "condition_remark": condition_remark,
+            "sort_order": idx,
+        })
+
+    return sanitized
+
+
+def sync_issue_items(db: sqlite3.Connection, vessel_id: int, issue_items: list[dict[str, Any]]) -> None:
+    db.execute("DELETE FROM vessel_issue_items WHERE vessel_id = ?", (vessel_id,))
+
+    for item in issue_items:
+        db.execute("""
+            INSERT INTO vessel_issue_items (
+                vessel_id,
+                issue_text,
+                is_critical,
+                issue_status,
+                sort_order,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (
+            vessel_id,
+            item["issue_text"],
+            item["is_critical"],
+            item["issue_status"],
+            item["sort_order"],
+        ))
+
+
+def migrate_legacy_issue_columns_to_table(conn: sqlite3.Connection) -> None:
+    vessel_rows = conn.execute("SELECT id, name FROM vessels").fetchall()
+
+    for vessel in vessel_rows:
+        vessel_id = vessel["id"]
+
+        exists = conn.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM vessel_issue_items
+            WHERE vessel_id = ?
+        """, (vessel_id,)).fetchone()
+
+        if exists and int(exists["cnt"] or 0) > 0:
+            continue
+
+        full_row = conn.execute("SELECT * FROM vessels WHERE id = ?", (vessel_id,)).fetchone()
+        if not full_row:
+            continue
+
+        inserts = []
+        for i in range(1, 16):
+            issue_text = str(full_row[f"issue_{i}"] or "").strip()
+            if not issue_text:
+                continue
+
+            inserts.append((
+                vessel_id,
+                issue_text,
+                int(full_row[f"issue_{i}_critical"] or 0),
+                "진행 중",
+                i,
+            ))
+
+        if inserts:
+            conn.executemany("""
+                INSERT INTO vessel_issue_items (
+                    vessel_id,
+                    issue_text,
+                    is_critical,
+                    issue_status,
+                    sort_order
+                ) VALUES (?, ?, ?, ?, ?)
+            """, inserts)
+
+def sync_coc_items(db: sqlite3.Connection, vessel_id: int, coc_items: list[dict[str, Any]]) -> None:
+    db.execute("DELETE FROM vessel_coc_items WHERE vessel_id = ?", (vessel_id,))
+
+    for item in coc_items:
+        db.execute("""
+            INSERT INTO vessel_coc_items (
+                vessel_id,
+                coc_type,
+                coc_summary,
+                coc_due_date,
+                item_status,
+                sort_order,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (
+            vessel_id,
+            item["coc_type"],
+            item["coc_summary"],
+            item["coc_due_date"],
+            item["item_status"],
+            item["sort_order"],
+        ))
+
+
+def sync_sire_items(db: sqlite3.Connection, vessel_id: int, sire_items: list[dict[str, Any]]) -> None:
+    db.execute("DELETE FROM vessel_sire_items WHERE vessel_id = ?", (vessel_id,))
+
+    for item in sire_items:
+        db.execute("""
+            INSERT INTO vessel_sire_items (
+                vessel_id,
+                sire_type,
+                sire_date,
+                sire_status,
+                sire_findings,
+                sire_open_findings,
+                sire_remark,
+                sort_order,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (
+            vessel_id,
+            item["sire_type"],
+            item["sire_date"],
+            item["sire_status"],
+            item["sire_findings"],
+            item["sire_open_findings"],
+            item["sire_remark"],
+            item["sort_order"],
+        ))
+
+
+def sync_condition_items(db: sqlite3.Connection, vessel_id: int, condition_items: list[dict[str, Any]]) -> None:
+    db.execute("DELETE FROM vessel_condition_items WHERE vessel_id = ?", (vessel_id,))
+
+    for item in condition_items:
+        db.execute("""
+            INSERT INTO vessel_condition_items (
+                vessel_id,
+                condition_type,
+                condition_date,
+                condition_status,
+                condition_findings,
+                condition_open_findings,
+                condition_remark,
+                sort_order,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (
+            vessel_id,
+            item["condition_type"],
+            item["condition_date"],
+            item["condition_status"],
+            item["condition_findings"],
+            item["condition_open_findings"],
+            item["condition_remark"],
+            item["sort_order"],
+        ))
+
+
+def migrate_legacy_coc_columns_to_table(conn: sqlite3.Connection) -> None:
+    vessel_rows = conn.execute("SELECT id FROM vessels").fetchall()
+
+    for vessel in vessel_rows:
+        vessel_id = vessel["id"]
+
+        exists = conn.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM vessel_coc_items
+            WHERE vessel_id = ?
+        """, (vessel_id,)).fetchone()
+
+        if exists and int(exists["cnt"] or 0) > 0:
+            continue
+
+        full_row = conn.execute("SELECT * FROM vessels WHERE id = ?", (vessel_id,)).fetchone()
+        if not full_row:
+            continue
+
+        inserts = []
+        for i in range(1, 11):
+            coc_type = str(full_row[f"coc_type_{i}"] or "").strip()
+            coc_summary = str(full_row[f"coc_summary_{i}"] or "").strip()
+            coc_due_date = str(full_row[f"coc_due_date_{i}"] or "").strip()
+
+            if not (coc_type or coc_summary or coc_due_date):
+                continue
+
+            inserts.append((
+                vessel_id,
+                coc_type,
+                coc_summary,
+                coc_due_date,
+                "진행 중",
+                i,
+            ))
+
+        if inserts:
+            conn.executemany("""
+                INSERT INTO vessel_coc_items (
+                    vessel_id,
+                    coc_type,
+                    coc_summary,
+                    coc_due_date,
+                    item_status,
+                    sort_order
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, inserts)
+
+
+def migrate_legacy_sire_columns_to_table(conn: sqlite3.Connection) -> None:
+    vessel_rows = conn.execute("SELECT id FROM vessels").fetchall()
+
+    for vessel in vessel_rows:
+        vessel_id = vessel["id"]
+
+        exists = conn.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM vessel_sire_items
+            WHERE vessel_id = ?
+        """, (vessel_id,)).fetchone()
+
+        if exists and int(exists["cnt"] or 0) > 0:
+            continue
+
+        full_row = conn.execute("SELECT * FROM vessels WHERE id = ?", (vessel_id,)).fetchone()
+        if not full_row:
+            continue
+
+        inserts = []
+        for i in range(1, 6):
+            sire_type = str(full_row[f"sire_type_{i}"] or "").strip()
+            sire_date = str(full_row[f"sire_date_{i}"] or "").strip()
+            sire_status = normalize_sire_like_status(full_row[f"sire_status_{i}"])
+            sire_findings = str(full_row[f"sire_findings_{i}"] or "").strip()
+            sire_open_findings = str(full_row[f"sire_open_findings_{i}"] or "").strip()
+            sire_remark = str(full_row[f"sire_remark_{i}"] or "").strip()
+
+            if not (sire_type or sire_date or sire_findings or sire_open_findings or sire_remark):
+                continue
+
+            inserts.append((
+                vessel_id,
+                sire_type,
+                sire_date,
+                sire_status,
+                sire_findings,
+                sire_open_findings,
+                sire_remark,
+                i,
+            ))
+
+        if inserts:
+            conn.executemany("""
+                INSERT INTO vessel_sire_items (
+                    vessel_id,
+                    sire_type,
+                    sire_date,
+                    sire_status,
+                    sire_findings,
+                    sire_open_findings,
+                    sire_remark,
+                    sort_order
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, inserts)
+
+
+def migrate_legacy_condition_columns_to_table(conn: sqlite3.Connection) -> None:
+    vessel_rows = conn.execute("SELECT id FROM vessels").fetchall()
+
+    for vessel in vessel_rows:
+        vessel_id = vessel["id"]
+
+        exists = conn.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM vessel_condition_items
+            WHERE vessel_id = ?
+        """, (vessel_id,)).fetchone()
+
+        if exists and int(exists["cnt"] or 0) > 0:
+            continue
+
+        full_row = conn.execute("SELECT * FROM vessels WHERE id = ?", (vessel_id,)).fetchone()
+        if not full_row:
+            continue
+
+        condition_type = str(full_row["condition_report_type"] or "").strip()
+        condition_date = str(full_row["condition_report_date"] or "").strip()
+        condition_status = normalize_sire_like_status(full_row["condition_report_status"])
+        condition_findings = str(full_row["condition_report_findings"] or "").strip()
+        condition_open_findings = str(full_row["condition_report_open_findings"] or "").strip()
+        condition_remark = str(full_row["condition_report_remark"] or "").strip()
+
+        if not (condition_type or condition_date or condition_findings or condition_open_findings or condition_remark):
+            continue
+
+        conn.execute("""
+            INSERT INTO vessel_condition_items (
+                vessel_id,
+                condition_type,
+                condition_date,
+                condition_status,
+                condition_findings,
+                condition_open_findings,
+                condition_remark,
+                sort_order
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        """, (
+            vessel_id,
+            condition_type,
+            condition_date,
+            condition_status,
+            condition_findings,
+            condition_open_findings,
+            condition_remark,
+        ))
 
 
 def init_db() -> None:
@@ -189,12 +796,23 @@ def init_db() -> None:
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.execute("PRAGMA busy_timeout=30000;")
         conn.execute("PRAGMA foreign_keys=ON;")
+        conn.row_factory = sqlite3.Row
         if SCHEMA_PATH.exists():
             schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
             conn.executescript(schema_sql)
         ensure_vessel_columns(conn)
         ensure_management_cost_table(conn)
         ensure_drydock_report_table(conn)
+        ensure_issue_items_table(conn)
+        ensure_coc_items_table(conn)
+        ensure_sire_items_table(conn)
+        ensure_condition_items_table(conn)
+        ensure_trip_schedule_table(conn)
+        migrate_legacy_issue_columns_to_table(conn)
+        migrate_legacy_coc_columns_to_table(conn)
+        migrate_legacy_sire_columns_to_table(conn)
+        migrate_legacy_condition_columns_to_table(conn)
+        
         conn.commit()
     finally:
         conn.close()
@@ -261,6 +879,7 @@ def get_version() -> int:
         BASE_DIR / "templates" / "management_cost_report.html",
         BASE_DIR / "static" / "css" / "style.css",
         BASE_DIR / "static" / "js" / "app.js",
+        BASE_DIR / "templates" / "trip_schedule.html",
         Path(__file__),
     ]
     mtimes = []
@@ -690,7 +1309,17 @@ def pick_latest_rows_by_vessel(ws) -> tuple[dict[str, dict[str, Any]], int, int]
 def get_all_vessels() -> list[dict[str, Any]]:
     db = get_db()
     rows = db.execute("SELECT * FROM vessels ORDER BY name COLLATE NOCASE ASC").fetchall()
-    return [row_to_vessel_dict(row) for row in rows]
+
+    vessels: list[dict[str, Any]] = []
+    for row in rows:
+        vessel = row_to_vessel_dict(row)
+        vessel["issue_items"] = get_issue_items_by_vessel_id(vessel["id"])
+        vessel["coc_items"] = get_coc_items_by_vessel_id(vessel["id"])
+        vessel["sire_items"] = get_sire_items_by_vessel_id(vessel["id"])
+        vessel["condition_items"] = get_condition_items_by_vessel_id(vessel["id"])
+        vessels.append(vessel)
+
+    return vessels
 
 
 def get_vessel_by_name(name: str) -> dict[str, Any] | None:
@@ -701,7 +1330,16 @@ def get_vessel_by_name(name: str) -> dict[str, Any] | None:
         WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
         LIMIT 1
     """, (name,)).fetchone()
-    return row_to_vessel_dict(row) if row else None
+
+    if not row:
+        return None
+
+    vessel = row_to_vessel_dict(row)
+    vessel["issue_items"] = get_issue_items_by_vessel_id(vessel["id"])
+    vessel["coc_items"] = get_coc_items_by_vessel_id(vessel["id"])
+    vessel["sire_items"] = get_sire_items_by_vessel_id(vessel["id"])
+    vessel["condition_items"] = get_condition_items_by_vessel_id(vessel["id"])
+    return vessel
 
 
 def get_management_cost_by_vessel_and_year(vessel_id: int, cost_year: str) -> dict[str, Any] | None:
@@ -806,6 +1444,16 @@ def is_coc_due_within_1_month(value: Any) -> bool:
 
 
 def has_any_coc_due(vessel: dict[str, Any]) -> bool:
+    coc_items = vessel.get("coc_items") or []
+
+    if coc_items:
+        for item in coc_items:
+            if normalize_work_status(item.get("item_status")) != "진행 중":
+                continue
+            if is_coc_due_within_1_month(item.get("coc_due_date", "")):
+                return True
+        return False
+
     for i in range(1, 11):
         if is_coc_due_within_1_month(vessel.get(f"coc_due_date_{i}", "")):
             return True
@@ -817,6 +1465,14 @@ def is_due_within_1_month(value: Any) -> bool:
 
 
 def has_sire_in_progress(vessel: dict[str, Any]) -> bool:
+    sire_items = vessel.get("sire_items") or []
+
+    if sire_items:
+        return any(
+            str(item.get("sire_status", "")).strip() == "결함조치 중"
+            for item in sire_items
+        )
+
     for i in range(1, 4):
         if str(vessel.get(f"sire_status_{i}", "")).strip() == "결함조치 중":
             return True
@@ -824,11 +1480,22 @@ def has_sire_in_progress(vessel: dict[str, Any]) -> bool:
 
 
 def has_critical_issue(vessel: dict[str, Any]) -> bool:
+    issue_items = vessel.get("issue_items") or []
+
+    if issue_items:
+        for item in issue_items:
+            issue_text = str(item.get("issue_text", "")).strip()
+            is_critical = int(item.get("is_critical") or 0)
+            if issue_text and is_critical == 1:
+                return True
+        return False
+
     for i in range(1, 16):
         issue_text = str(vessel.get(f"issue_{i}", "")).strip()
         issue_critical = int(vessel.get(f"issue_{i}_critical") or 0)
         if issue_text and issue_critical == 1:
             return True
+
     return False
 
 
@@ -1111,24 +1778,41 @@ def index():
     return render_template("index.html", version=get_version())
 
 
+
 @app.route("/report")
 def report_page():
     filter_name = request.args.get("filter", "all")
+    current_status = normalize_issue_status(request.args.get("status", "진행 중"))
 
     vessels = get_all_vessels()
     vessels = apply_filter_to_vessels(vessels, filter_name)
 
     report_rows = []
-    critical_vessel_names = set()
+    critical_issue_count = 0
 
     for vessel in vessels:
-        vessel_has_critical = False
+        issue_items = vessel.get("issue_items") or []
 
-        for i in range(1, 16):
-            issue_text = (vessel.get(f"issue_{i}") or "").strip()
-            issue_critical = int(vessel.get(f"issue_{i}_critical") or 0)
+        if issue_items:
+            sorted_items = sorted(
+                issue_items,
+                key=lambda x: (int(x.get("sort_order") or 9999), int(x.get("id") or 999999)),
+            )
 
-            if issue_text:
+            visible_no = 0
+
+            for item in sorted_items:
+                issue_text = str(item.get("issue_text", "") or "").strip()
+                issue_critical = int(item.get("is_critical") or 0)
+                issue_status = normalize_issue_status(item.get("issue_status"))
+
+                if not issue_text:
+                    continue
+                if issue_status != current_status:
+                    continue
+
+                visible_no += 1
+
                 report_rows.append({
                     "name": vessel.get("name", ""),
                     "vessel_type": vessel.get("vessel_type", ""),
@@ -1136,30 +1820,61 @@ def report_page():
                     "owner_supervisor": vessel.get("owner_supervisor", ""),
                     "team_name": vessel.get("team_name", ""),
                     "voyage_plan": vessel.get("voyage_plan", ""),
-                    "issue_no": i,
+                    "issue_no": visible_no,
                     "issue_text": issue_text,
+                    "issue_status": issue_status,
                     "issue_critical": issue_critical,
                 })
 
                 if issue_critical == 1:
-                    vessel_has_critical = True
+                    critical_issue_count += 1
 
-        if vessel_has_critical:
-            critical_vessel_names.add(vessel.get("name", ""))
+        else:
+            visible_no = 0
+
+            for i in range(1, 16):
+                issue_text = str(vessel.get(f"issue_{i}") or "").strip()
+                issue_critical = int(vessel.get(f"issue_{i}_critical") or 0)
+                issue_status = "진행 중"
+
+                if not issue_text:
+                    continue
+                if issue_status != current_status:
+                    continue
+
+                visible_no += 1
+
+                report_rows.append({
+                    "name": vessel.get("name", ""),
+                    "vessel_type": vessel.get("vessel_type", ""),
+                    "management_company": vessel.get("management_company", ""),
+                    "owner_supervisor": vessel.get("owner_supervisor", ""),
+                    "team_name": vessel.get("team_name", ""),
+                    "voyage_plan": vessel.get("voyage_plan", ""),
+                    "issue_no": visible_no,
+                    "issue_text": issue_text,
+                    "issue_status": issue_status,
+                    "issue_critical": issue_critical,
+                })
+
+                if issue_critical == 1:
+                    critical_issue_count += 1
 
     return render_template(
         "report.html",
         version=get_version(),
         total_count=len(vessels),
-        critical_vessel_count=len(critical_vessel_names),
+        critical_issue_count=critical_issue_count,
         report_rows=report_rows,
         current_filter=filter_name,
+        current_status=current_status,
     )
 
 
 @app.route("/coc-report")
 def coc_report():
     filter_name = request.args.get("filter", "all")
+    current_status = normalize_work_status(request.args.get("status", "진행 중"))
 
     vessels = get_all_vessels()
     vessels = apply_filter_to_vessels(vessels, filter_name)
@@ -1169,16 +1884,28 @@ def coc_report():
     due_soon_vessel_names = set()
 
     for vessel in vessels:
-        has_coc = False
+        coc_items = vessel.get("coc_items") or []
+        if coc_items:
+            sorted_items = sorted(
+                coc_items,
+                key=lambda x: (int(x.get("sort_order") or 9999), int(x.get("id") or 999999)),
+            )
+            visible_no = 0
+            vessel_has_visible = False
+            for item in sorted_items:
+                coc_type = str(item.get("coc_type", "") or "").strip()
+                coc_summary = str(item.get("coc_summary", "") or "").strip()
+                coc_due_date = str(item.get("coc_due_date", "") or "").strip()
+                item_status = normalize_work_status(item.get("item_status"))
 
-        for i in range(1, 11):
-            coc_type = (vessel.get(f"coc_type_{i}") or "").strip()
-            coc_summary = (vessel.get(f"coc_summary_{i}") or "").strip()
-            coc_due_date = (vessel.get(f"coc_due_date_{i}") or "").strip()
+                if not (coc_type or coc_summary or coc_due_date):
+                    continue
+                if item_status != current_status:
+                    continue
 
-            if coc_type or coc_summary or coc_due_date:
-                has_coc = True
-                due_soon = is_due_within_1_month(coc_due_date)
+                visible_no += 1
+                vessel_has_visible = True
+                due_soon = current_status == "진행 중" and is_due_within_1_month(coc_due_date)
                 if due_soon:
                     due_soon_vessel_names.add(vessel.get("name", ""))
 
@@ -1188,15 +1915,52 @@ def coc_report():
                     "management_company": vessel.get("management_company", ""),
                     "owner_supervisor": vessel.get("owner_supervisor", ""),
                     "team_name": vessel.get("team_name", ""),
-                    "coc_no": i,
+                    "coc_no": visible_no,
                     "coc_type": coc_type,
                     "coc_summary": coc_summary,
                     "coc_due_date": coc_due_date,
+                    "item_status": item_status,
                     "is_due_soon": due_soon,
                 })
 
-        if has_coc:
-            coc_vessel_names.add(vessel.get("name", ""))
+            if vessel_has_visible:
+                coc_vessel_names.add(vessel.get("name", ""))
+        else:
+            visible_no = 0
+            vessel_has_visible = False
+            for i in range(1, 11):
+                coc_type = str(vessel.get(f"coc_type_{i}", "") or "").strip()
+                coc_summary = str(vessel.get(f"coc_summary_{i}", "") or "").strip()
+                coc_due_date = str(vessel.get(f"coc_due_date_{i}", "") or "").strip()
+                item_status = "진행 중"
+
+                if not (coc_type or coc_summary or coc_due_date):
+                    continue
+                if item_status != current_status:
+                    continue
+
+                visible_no += 1
+                vessel_has_visible = True
+                due_soon = current_status == "진행 중" and is_due_within_1_month(coc_due_date)
+                if due_soon:
+                    due_soon_vessel_names.add(vessel.get("name", ""))
+
+                report_rows.append({
+                    "name": vessel.get("name", ""),
+                    "vessel_type": vessel.get("vessel_type", ""),
+                    "management_company": vessel.get("management_company", ""),
+                    "owner_supervisor": vessel.get("owner_supervisor", ""),
+                    "team_name": vessel.get("team_name", ""),
+                    "coc_no": visible_no,
+                    "coc_type": coc_type,
+                    "coc_summary": coc_summary,
+                    "coc_due_date": coc_due_date,
+                    "item_status": item_status,
+                    "is_due_soon": due_soon,
+                })
+
+            if vessel_has_visible:
+                coc_vessel_names.add(vessel.get("name", ""))
 
     return render_template(
         "coc_report.html",
@@ -1206,42 +1970,67 @@ def coc_report():
         due_soon_count=len(due_soon_vessel_names),
         report_rows=report_rows,
         current_filter=filter_name,
+        current_status=current_status,
     )
+
 
 
 @app.route("/sire-report")
 def sire_report_page():
     filter_name = request.args.get("filter", "all")
+    current_status = normalize_work_status(request.args.get("status", "진행 중"))
 
     vessels = get_all_vessels()
     vessels = apply_filter_to_vessels(vessels, filter_name)
+    vessels = [v for v in vessels if str(v.get("vessel_type", "")).strip() == "Tanker"]
 
     report_rows = []
-    sire_vessel_names = set()
-    sire_progress_vessel_names = set()
+
+    planned_vessel_names = set()
+    progress_vessel_names = set()
+    done_vessel_names = set()
 
     for vessel in vessels:
-        vessel_has_sire = False
-        vessel_has_progress = False
+        vessel_name = vessel.get("name", "")
+        sire_items = vessel.get("sire_items") or []
 
-        for i in range(1, 4):
-            sire_type = str(vessel.get(f"sire_type_{i}", "")).strip()
-            sire_date = str(vessel.get(f"sire_date_{i}", "")).strip()
-            sire_status = str(vessel.get(f"sire_status_{i}", "")).strip()
-            sire_findings = str(vessel.get(f"sire_findings_{i}", "")).strip()
-            sire_open_findings = str(vessel.get(f"sire_open_findings_{i}", "")).strip()
-            sire_remark = str(vessel.get(f"sire_remark_{i}", "")).strip()
+        if sire_items:
+            sorted_items = sorted(
+                sire_items,
+                key=lambda x: (int(x.get("sort_order") or 9999), int(x.get("id") or 999999)),
+            )
+            visible_no = 0
 
-            if sire_type or sire_date or sire_status or sire_findings or sire_open_findings or sire_remark:
-                vessel_has_sire = True
+            for item in sorted_items:
+                sire_type = str(item.get("sire_type", "") or "").strip()
+                sire_date = str(item.get("sire_date", "") or "").strip()
+                sire_status = normalize_sire_like_status(item.get("sire_status"))
+                sire_findings = str(item.get("sire_findings", "") or "").strip()
+                sire_open_findings = str(item.get("sire_open_findings", "") or "").strip()
+                sire_remark = str(item.get("sire_remark", "") or "").strip()
+
+                if not (sire_type or sire_date or sire_findings or sire_open_findings or sire_remark):
+                    continue
+
+                if sire_status == "예정":
+                    planned_vessel_names.add(vessel_name)
+                elif sire_status == "결함조치 중":
+                    progress_vessel_names.add(vessel_name)
+                elif sire_status == "수검완료":
+                    done_vessel_names.add(vessel_name)
+
+                if bucket_from_sire_like_status(sire_status) != current_status:
+                    continue
+
+                visible_no += 1
 
                 report_rows.append({
-                    "name": vessel.get("name", ""),
+                    "name": vessel_name,
                     "size": vessel.get("size") or vessel.get("vessel_type", ""),
                     "management_company": vessel.get("management_company", ""),
                     "owner_supervisor": vessel.get("owner_supervisor", ""),
                     "cargo_status": vessel.get("cargo_status", ""),
-                    "sire_no": i,
+                    "sire_no": visible_no,
                     "sire_type": sire_type,
                     "sire_date": sire_date,
                     "sire_status": sire_status,
@@ -1250,59 +2039,345 @@ def sire_report_page():
                     "sire_remark": sire_remark,
                 })
 
-                if sire_status == "결함조치 중":
-                    vessel_has_progress = True
+        else:
+            visible_no = 0
 
-        if vessel_has_sire:
-            sire_vessel_names.add(vessel.get("name", ""))
+            for i in range(1, 6):
+                sire_type = str(vessel.get(f"sire_type_{i}", "") or "").strip()
+                sire_date = str(vessel.get(f"sire_date_{i}", "") or "").strip()
+                sire_status = normalize_sire_like_status(vessel.get(f"sire_status_{i}"))
+                sire_findings = str(vessel.get(f"sire_findings_{i}", "") or "").strip()
+                sire_open_findings = str(vessel.get(f"sire_open_findings_{i}", "") or "").strip()
+                sire_remark = str(vessel.get(f"sire_remark_{i}", "") or "").strip()
 
-        if vessel_has_progress:
-            sire_progress_vessel_names.add(vessel.get("name", ""))
+                if not (sire_type or sire_date or sire_findings or sire_open_findings or sire_remark):
+                    continue
+
+                if sire_status == "예정":
+                    planned_vessel_names.add(vessel_name)
+                elif sire_status == "결함조치 중":
+                    progress_vessel_names.add(vessel_name)
+                elif sire_status == "수검완료":
+                    done_vessel_names.add(vessel_name)
+
+                if bucket_from_sire_like_status(sire_status) != current_status:
+                    continue
+
+                visible_no += 1
+
+                report_rows.append({
+                    "name": vessel_name,
+                    "size": vessel.get("size") or vessel.get("vessel_type", ""),
+                    "management_company": vessel.get("management_company", ""),
+                    "owner_supervisor": vessel.get("owner_supervisor", ""),
+                    "cargo_status": vessel.get("cargo_status", ""),
+                    "sire_no": visible_no,
+                    "sire_type": sire_type,
+                    "sire_date": sire_date,
+                    "sire_status": sire_status,
+                    "sire_findings": sire_findings,
+                    "sire_open_findings": sire_open_findings,
+                    "sire_remark": sire_remark,
+                })
 
     return render_template(
         "sire_report.html",
         version=get_version(),
         total_count=len(vessels),
-        sire_vessel_count=len(sire_vessel_names),
-        sire_progress_count=len(sire_progress_vessel_names),
+        planned_count=len(planned_vessel_names),
+        progress_count=len(progress_vessel_names),
+        done_count=len(done_vessel_names),
         report_rows=report_rows,
         current_filter=filter_name,
+        current_status=current_status,
     )
+
+
+@app.route("/sire-history-report")
+def sire_history_report_page():
+    filter_name = request.args.get("filter", "all")
+
+    vessels = get_all_vessels()
+    vessels = apply_filter_to_vessels(vessels, filter_name)
+    vessels = [v for v in vessels if str(v.get("vessel_type", "")).strip() == "Tanker"]
+
+    report_rows = []
+
+    for vessel in vessels:
+        normalized_items = []
+        sire_items = vessel.get("sire_items") or []
+
+        if sire_items:
+            for item in sire_items:
+                sire_type = str(item.get("sire_type", "") or "").strip()
+                sire_date = str(item.get("sire_date", "") or "").strip()
+                sire_status = normalize_sire_like_status(item.get("sire_status"))
+                if not (sire_type or sire_date or sire_status):
+                    continue
+
+                dt = parse_date_safe(sire_date)
+                if not dt:
+                    continue
+
+                normalized_items.append({
+                    "sire_type": sire_type,
+                    "sire_date": sire_date,
+                    "sire_status": sire_status,
+                    "_dt": dt,
+                })
+        else:
+            for i in range(1, 6):
+                sire_type = str(vessel.get(f"sire_type_{i}", "") or "").strip()
+                sire_date = str(vessel.get(f"sire_date_{i}", "") or "").strip()
+                sire_status = normalize_sire_like_status(vessel.get(f"sire_status_{i}"))
+
+                if not (sire_type or sire_date or sire_status):
+                    continue
+
+                dt = parse_date_safe(sire_date)
+                if not dt:
+                    continue
+
+                normalized_items.append({
+                    "sire_type": sire_type,
+                    "sire_date": sire_date,
+                    "sire_status": sire_status,
+                    "_dt": dt,
+                })
+
+        normalized_items.sort(key=lambda x: x["_dt"], reverse=True)
+        latest_items = normalized_items[:4]
+
+        while len(latest_items) < 4:
+            latest_items.append({
+                "sire_type": "",
+                "sire_date": "",
+                "sire_status": "",
+                "_dt": None,
+            })
+
+        report_rows.append({
+            "name": vessel.get("name", ""),
+            "h1_type": latest_items[0]["sire_type"],
+            "h1_date": latest_items[0]["sire_date"],
+            "h1_status": latest_items[0]["sire_status"],
+            "h2_type": latest_items[1]["sire_type"],
+            "h2_date": latest_items[1]["sire_date"],
+            "h2_status": latest_items[1]["sire_status"],
+            "h3_type": latest_items[2]["sire_type"],
+            "h3_date": latest_items[2]["sire_date"],
+            "h3_status": latest_items[2]["sire_status"],
+            "h4_type": latest_items[3]["sire_type"],
+            "h4_date": latest_items[3]["sire_date"],
+            "h4_status": latest_items[3]["sire_status"],
+        })
+
+    report_rows.sort(key=lambda x: str(x["name"]).lower())
+
+    return render_template(
+        "sire_history_report.html",
+        version=get_version(),
+        current_filter=filter_name,
+        report_rows=report_rows,
+    )
+
 
 
 @app.route("/condition-report")
 def condition_report_page():
     filter_name = request.args.get("filter", "all")
+    current_status = normalize_work_status(request.args.get("status", "진행 중"))
 
     vessels = get_all_vessels()
     vessels = apply_filter_to_vessels(vessels, filter_name)
 
-    vessels_with_condition = [
-        v for v in vessels
-        if str(v.get("condition_report_type", "")).strip()
-        or str(v.get("condition_report_date", "")).strip()
-        or str(v.get("condition_report_status", "")).strip()
-        or str(v.get("condition_report_findings", "")).strip()
-        or str(v.get("condition_report_open_findings", "")).strip()
-        or str(v.get("condition_report_remark", "")).strip()
-    ]
+    condition_rows = []
 
-    condition_report_count = len(vessels_with_condition)
-    condition_progress_count = sum(
-        1 for v in vessels_with_condition
-        if str(v.get("condition_report_status", "")).strip() == "결함조치 중"
-    )
+    planned_vessel_names = set()
+    progress_vessel_names = set()
+    done_vessel_names = set()
+
+    for vessel in vessels:
+        vessel_name = vessel.get("name", "")
+        condition_items = vessel.get("condition_items") or []
+
+        if condition_items:
+            sorted_items = sorted(
+                condition_items,
+                key=lambda x: (int(x.get("sort_order") or 9999), int(x.get("id") or 999999)),
+            )
+            visible_no = 0
+
+            for item in sorted_items:
+                condition_type = str(item.get("condition_type", "") or "").strip()
+                condition_date = str(item.get("condition_date", "") or "").strip()
+                condition_status = normalize_sire_like_status(item.get("condition_status"))
+                condition_findings = str(item.get("condition_findings", "") or "").strip()
+                condition_open_findings = str(item.get("condition_open_findings", "") or "").strip()
+                condition_remark = str(item.get("condition_remark", "") or "").strip()
+
+                if not (condition_type or condition_date or condition_findings or condition_open_findings or condition_remark):
+                    continue
+
+                if condition_status == "예정":
+                    planned_vessel_names.add(vessel_name)
+                elif condition_status == "결함조치 중":
+                    progress_vessel_names.add(vessel_name)
+                elif condition_status == "수검완료":
+                    done_vessel_names.add(vessel_name)
+
+                if bucket_from_sire_like_status(condition_status) != current_status:
+                    continue
+
+                visible_no += 1
+
+                condition_rows.append({
+                    "name": vessel_name,
+                    "management_company": vessel.get("management_company", ""),
+                    "owner_supervisor": vessel.get("owner_supervisor", ""),
+                    "condition_no": visible_no,
+                    "condition_report_type": condition_type,
+                    "condition_report_date": condition_date,
+                    "condition_report_status": condition_status,
+                    "condition_report_findings": condition_findings,
+                    "condition_report_open_findings": condition_open_findings,
+                    "condition_report_remark": condition_remark,
+                })
+
+        else:
+            condition_type = str(vessel.get("condition_report_type", "") or "").strip()
+            condition_date = str(vessel.get("condition_report_date", "") or "").strip()
+            condition_status = normalize_sire_like_status(vessel.get("condition_report_status"))
+            condition_findings = str(vessel.get("condition_report_findings", "") or "").strip()
+            condition_open_findings = str(vessel.get("condition_report_open_findings", "") or "").strip()
+            condition_remark = str(vessel.get("condition_report_remark", "") or "").strip()
+
+            if condition_type or condition_date or condition_findings or condition_open_findings or condition_remark:
+                if condition_status == "예정":
+                    planned_vessel_names.add(vessel_name)
+                elif condition_status == "결함조치 중":
+                    progress_vessel_names.add(vessel_name)
+                elif condition_status == "수검완료":
+                    done_vessel_names.add(vessel_name)
+
+                if bucket_from_sire_like_status(condition_status) == current_status:
+                    condition_rows.append({
+                        "name": vessel_name,
+                        "management_company": vessel.get("management_company", ""),
+                        "owner_supervisor": vessel.get("owner_supervisor", ""),
+                        "condition_no": 1,
+                        "condition_report_type": condition_type,
+                        "condition_report_date": condition_date,
+                        "condition_report_status": condition_status,
+                        "condition_report_findings": condition_findings,
+                        "condition_report_open_findings": condition_open_findings,
+                        "condition_report_remark": condition_remark,
+                    })
 
     return render_template(
         "condition_report.html",
         version=get_version(),
-        vessels=vessels_with_condition,
+        vessels=condition_rows,
+        report_rows=condition_rows,
         total_count=len(vessels),
-        condition_report_count=condition_report_count,
-        condition_progress_count=condition_progress_count,
+        planned_count=len(planned_vessel_names),
+        progress_count=len(progress_vessel_names),
+        done_count=len(done_vessel_names),
         current_filter=filter_name,
+        current_status=current_status,
     )
 
+
+@app.route("/condition-quarter-report")
+def condition_quarter_report_page():
+    filter_name = request.args.get("filter", "all")
+    selected_year = datetime.now().year
+
+    vessels = get_all_vessels()
+    vessels = apply_filter_to_vessels(vessels, filter_name)
+
+    quarter_rows = []
+
+    for vessel in vessels:
+        quarter_map = {
+            1: {"type": "", "date": "", "status": "", "_dt": None},
+            2: {"type": "", "date": "", "status": "", "_dt": None},
+            3: {"type": "", "date": "", "status": "", "_dt": None},
+            4: {"type": "", "date": "", "status": "", "_dt": None},
+        }
+
+        condition_items = vessel.get("condition_items") or []
+
+        normalized_items = []
+
+        if condition_items:
+            for item in condition_items:
+                condition_type = str(item.get("condition_type", "") or "").strip()
+                condition_date = str(item.get("condition_date", "") or "").strip()
+                condition_status = normalize_sire_like_status(item.get("condition_status"))
+                if not (condition_type or condition_date or condition_status):
+                    continue
+
+                normalized_items.append({
+                    "condition_type": condition_type,
+                    "condition_date": condition_date,
+                    "condition_status": condition_status,
+                })
+        else:
+            condition_type = str(vessel.get("condition_report_type", "") or "").strip()
+            condition_date = str(vessel.get("condition_report_date", "") or "").strip()
+            condition_status = normalize_sire_like_status(vessel.get("condition_report_status"))
+
+            if condition_type or condition_date or condition_status:
+                normalized_items.append({
+                    "condition_type": condition_type,
+                    "condition_date": condition_date,
+                    "condition_status": condition_status,
+                })
+
+        for item in normalized_items:
+            dt = parse_date_safe(item["condition_date"])
+            if not dt:
+                continue
+            if dt.year != selected_year:
+                continue
+
+            quarter = ((dt.month - 1) // 3) + 1
+            existing_dt = quarter_map[quarter]["_dt"]
+
+            if existing_dt is None or dt > existing_dt:
+                quarter_map[quarter] = {
+                    "type": item["condition_type"],
+                    "date": item["condition_date"],
+                    "status": item["condition_status"],
+                    "_dt": dt,
+                }
+
+        quarter_rows.append({
+            "name": vessel.get("name", ""),
+            "q1_type": quarter_map[1]["type"],
+            "q1_date": quarter_map[1]["date"],
+            "q1_status": quarter_map[1]["status"],
+            "q2_type": quarter_map[2]["type"],
+            "q2_date": quarter_map[2]["date"],
+            "q2_status": quarter_map[2]["status"],
+            "q3_type": quarter_map[3]["type"],
+            "q3_date": quarter_map[3]["date"],
+            "q3_status": quarter_map[3]["status"],
+            "q4_type": quarter_map[4]["type"],
+            "q4_date": quarter_map[4]["date"],
+            "q4_status": quarter_map[4]["status"],
+        })
+
+    quarter_rows.sort(key=lambda x: str(x["name"]).lower())
+
+    return render_template(
+        "condition_quarter_report.html",
+        version=get_version(),
+        current_filter=filter_name,
+        selected_year=selected_year,
+        report_rows=quarter_rows,
+    )
 
 @app.route("/management-cost-report")
 def management_cost_report_page():
@@ -1392,8 +2467,16 @@ def api_get_vessels():
         (current_year,)
     ).fetchall()
 
+    result = []
+    for row in rows:
+        item = dict(row)
+        item["issue_items"] = get_issue_items_by_vessel_id(item["id"])
+        item["coc_items"] = get_coc_items_by_vessel_id(item["id"])
+        item["sire_items"] = get_sire_items_by_vessel_id(item["id"])
+        item["condition_items"] = get_condition_items_by_vessel_id(item["id"])
+        result.append(item)
 
-    return no_cache_json([dict(row) for row in rows])
+    return no_cache_json(result)
 
 
 @app.route("/api/vessel/cost", methods=["GET"])
@@ -1451,6 +2534,10 @@ def api_save_single_vessel():
     delivery_date = str(payload.get("deliveryDate", "")).strip()
     next_dry_dock = str(payload.get("nextDryDock", "")).strip()
     voyage_plan = str(payload.get("voyagePlan", "")).strip()
+    issue_items = sanitize_issue_items(payload.get("issueItems", []))
+    coc_items = sanitize_coc_items(payload.get("cocItems", []))
+    sire_items = sanitize_sire_items(payload.get("sireItems", []))
+    condition_items = sanitize_condition_items(payload.get("conditionItems", []))
 
     cargo_status = normalize_cargo_status(payload.get("cargoStatus"))
     if vessel_type == "Container":
@@ -1476,16 +2563,27 @@ def api_save_single_vessel():
     }
 
     for i in range(1, 16):
-        fields[f"issue_{i}"] = str(payload.get(f"issue{i}", "")).strip()
-        fields[f"issue_{i}_critical"] = 1 if payload.get(f"issue{i}Critical") else 0
+        if i <= len(issue_items):
+            item = issue_items[i - 1]
+            fields[f"issue_{i}"] = item["issue_text"]
+            fields[f"issue_{i}_critical"] = item["is_critical"]
+        else:
+            fields[f"issue_{i}"] = ""
+            fields[f"issue_{i}_critical"] = 0
 
     for i in range(1, 11):
-        fields[f"coc_type_{i}"] = str(payload.get(f"cocType{i}", "")).strip()
-        fields[f"coc_summary_{i}"] = str(payload.get(f"cocSummary{i}", "")).strip()
-        fields[f"coc_due_date_{i}"] = str(payload.get(f"cocDueDate{i}", "")).strip()
+        if i <= len(coc_items):
+            item = coc_items[i - 1]
+            fields[f"coc_type_{i}"] = item["coc_type"]
+            fields[f"coc_summary_{i}"] = item["coc_summary"]
+            fields[f"coc_due_date_{i}"] = item["coc_due_date"]
+        else:
+            fields[f"coc_type_{i}"] = ""
+            fields[f"coc_summary_{i}"] = ""
+            fields[f"coc_due_date_{i}"] = ""
 
     for i in range(1, 6):
-        if i > SIRE_COUNT or vessel_type == "Container":
+        if vessel_type == "Container" or i > len(sire_items):
             fields[f"sire_type_{i}"] = ""
             fields[f"sire_date_{i}"] = ""
             fields[f"sire_status_{i}"] = ""
@@ -1493,19 +2591,29 @@ def api_save_single_vessel():
             fields[f"sire_open_findings_{i}"] = ""
             fields[f"sire_remark_{i}"] = ""
         else:
-            fields[f"sire_type_{i}"] = str(payload.get(f"sireType{i}", "")).strip()
-            fields[f"sire_date_{i}"] = str(payload.get(f"sireDate{i}", "")).strip()
-            fields[f"sire_status_{i}"] = normalize_sire_status(payload.get(f"sireStatus{i}"))
-            fields[f"sire_findings_{i}"] = str(payload.get(f"sireFindings{i}", "")).strip()
-            fields[f"sire_open_findings_{i}"] = str(payload.get(f"sireOpenFindings{i}", "")).strip()
-            fields[f"sire_remark_{i}"] = str(payload.get(f"sireRemark{i}", "")).strip()
+            item = sire_items[i - 1]
+            fields[f"sire_type_{i}"] = item["sire_type"]
+            fields[f"sire_date_{i}"] = item["sire_date"]
+            fields[f"sire_status_{i}"] = item["sire_status"]
+            fields[f"sire_findings_{i}"] = item["sire_findings"]
+            fields[f"sire_open_findings_{i}"] = item["sire_open_findings"]
+            fields[f"sire_remark_{i}"] = item["sire_remark"]
 
-    fields["condition_report_type"] = str(payload.get("conditionReportType", "")).strip()
-    fields["condition_report_date"] = str(payload.get("conditionReportDate", "")).strip()
-    fields["condition_report_status"] = normalize_sire_status(payload.get("conditionReportStatus"))
-    fields["condition_report_findings"] = str(payload.get("conditionReportFindings", "")).strip()
-    fields["condition_report_open_findings"] = str(payload.get("conditionReportOpenFindings", "")).strip()
-    fields["condition_report_remark"] = str(payload.get("conditionReportRemark", "")).strip()
+    if condition_items:
+        first_condition = condition_items[0]
+        fields["condition_report_type"] = first_condition["condition_type"]
+        fields["condition_report_date"] = first_condition["condition_date"]
+        fields["condition_report_status"] = first_condition["condition_status"]
+        fields["condition_report_findings"] = first_condition["condition_findings"]
+        fields["condition_report_open_findings"] = first_condition["condition_open_findings"]
+        fields["condition_report_remark"] = first_condition["condition_remark"]
+    else:
+        fields["condition_report_type"] = ""
+        fields["condition_report_date"] = ""
+        fields["condition_report_status"] = ""
+        fields["condition_report_findings"] = ""
+        fields["condition_report_open_findings"] = ""
+        fields["condition_report_remark"] = ""
 
     db = get_db()
     search_name = original_name if original_name else name
@@ -1552,6 +2660,11 @@ def api_save_single_vessel():
                 [fields[col] for col in columns],
             )
             vessel_id = cursor.lastrowid
+
+        sync_issue_items(db, vessel_id, issue_items)
+        sync_coc_items(db, vessel_id, coc_items)
+        sync_sire_items(db, vessel_id, sire_items)
+        sync_condition_items(db, vessel_id, condition_items)
 
         if old_next_dry_dock != next_dry_dock:
             drydock_existing = db.execute("""
@@ -1617,7 +2730,8 @@ def api_save_single_vessel():
     except Exception as e:
         db.rollback()
         return no_cache_json({"success": False, "message": f"저장 실패: {e}"}, 500)
-    
+
+
 @app.route("/api/vessel/delete", methods=["POST"])
 def api_delete_single_vessel():
     payload = request.get_json(silent=True) or {}
@@ -2023,6 +3137,211 @@ def serve_report_file(filename: str):
 @app.errorhandler(413)
 def file_too_large(_error):
     return no_cache_json({"success": False, "message": "파일 용량이 너무 큽니다."}, 413)
+
+@app.route("/trip-schedule")
+def trip_schedule_page():
+    calendar_start, calendar_end = get_trip_schedule_visible_range()
+    return render_template(
+        "trip_schedule.html",
+        version=get_version(),
+        calendar_start=calendar_start,
+        calendar_end=calendar_end,
+    )
+
+
+@app.route("/api/trip-schedules", methods=["GET"])
+def api_get_trip_schedules():
+    calendar_start = str(request.args.get("start", "")).strip()
+    calendar_end = str(request.args.get("end", "")).strip()
+
+    default_start, default_end = get_trip_schedule_visible_range()
+    if not calendar_start:
+        calendar_start = default_start
+    if not calendar_end:
+        calendar_end = default_end
+
+    start_dt = parse_date_safe(calendar_start)
+    end_dt = parse_date_safe(calendar_end)
+
+    if not start_dt or not end_dt:
+        return no_cache_json({
+            "success": False,
+            "message": "조회 기간 형식이 올바르지 않습니다."
+        }, 400)
+
+    db = get_db()
+    rows = db.execute("""
+        SELECT
+            id,
+            supervisor_name,
+            start_date,
+            end_date,
+            reason,
+            created_at,
+            updated_at
+        FROM trip_schedules
+        WHERE end_date >= ? AND start_date <= ?
+        ORDER BY start_date ASC, supervisor_name COLLATE NOCASE ASC, id ASC
+    """, (calendar_start, calendar_end)).fetchall()
+
+    return no_cache_json({
+        "success": True,
+        "calendar_start": calendar_start,
+        "calendar_end": calendar_end,
+        "items": [dict(row) for row in rows],
+    })
+
+
+@app.route("/api/trip-schedules", methods=["POST"])
+def api_save_trip_schedule():
+    payload = request.get_json(silent=True) or {}
+
+    schedule_id = payload.get("id")
+    supervisor_name = str(payload.get("supervisorName", "")).strip()
+    start_date = str(payload.get("startDate", "")).strip()
+    end_date = str(payload.get("endDate", "")).strip()
+    reason = str(payload.get("reason", "")).strip()
+
+    if not supervisor_name:
+        return no_cache_json({
+            "success": False,
+            "message": "감독이름을 입력해주세요."
+        }, 400)
+
+    if not start_date or not end_date:
+        return no_cache_json({
+            "success": False,
+            "message": "시작날짜와 종료날짜를 입력해주세요."
+        }, 400)
+
+    start_dt = parse_date_safe(start_date)
+    end_dt = parse_date_safe(end_date)
+
+    if not start_dt or not end_dt:
+        return no_cache_json({
+            "success": False,
+            "message": "날짜 형식이 올바르지 않습니다."
+        }, 400)
+
+    if start_dt > end_dt:
+        return no_cache_json({
+            "success": False,
+            "message": "종료날짜는 시작날짜보다 빠를 수 없습니다."
+        }, 400)
+
+    db = get_db()
+
+    try:
+        if schedule_id:
+            existing = db.execute("""
+                SELECT id
+                FROM trip_schedules
+                WHERE id = ?
+                LIMIT 1
+            """, (schedule_id,)).fetchone()
+
+            if not existing:
+                return no_cache_json({
+                    "success": False,
+                    "message": "수정할 출장 일정을 찾을 수 없습니다."
+                }, 404)
+
+            db.execute("""
+                UPDATE trip_schedules
+                SET
+                    supervisor_name = ?,
+                    start_date = ?,
+                    end_date = ?,
+                    reason = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                supervisor_name,
+                start_date,
+                end_date,
+                reason,
+                schedule_id,
+            ))
+            saved_id = int(schedule_id)
+            message = "출장 일정이 수정되었습니다."
+        else:
+            cursor = db.execute("""
+                INSERT INTO trip_schedules (
+                    supervisor_name,
+                    start_date,
+                    end_date,
+                    reason,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """, (
+                supervisor_name,
+                start_date,
+                end_date,
+                reason,
+            ))
+            saved_id = cursor.lastrowid
+            message = "출장 일정이 저장되었습니다."
+
+        db.commit()
+
+        row = db.execute("""
+            SELECT
+                id,
+                supervisor_name,
+                start_date,
+                end_date,
+                reason,
+                created_at,
+                updated_at
+            FROM trip_schedules
+            WHERE id = ?
+            LIMIT 1
+        """, (saved_id,)).fetchone()
+
+        return no_cache_json({
+            "success": True,
+            "message": message,
+            "item": dict(row) if row else {},
+        })
+
+    except Exception as e:
+        db.rollback()
+        return no_cache_json({
+            "success": False,
+            "message": f"출장 일정 저장 실패: {e}"
+        }, 500)
+
+
+@app.route("/api/trip-schedules/<int:schedule_id>", methods=["DELETE"])
+def api_delete_trip_schedule(schedule_id: int):
+    db = get_db()
+
+    existing = db.execute("""
+        SELECT id
+        FROM trip_schedules
+        WHERE id = ?
+        LIMIT 1
+    """, (schedule_id,)).fetchone()
+
+    if not existing:
+        return no_cache_json({
+            "success": False,
+            "message": "삭제할 출장 일정을 찾을 수 없습니다."
+        }, 404)
+
+    try:
+        db.execute("DELETE FROM trip_schedules WHERE id = ?", (schedule_id,))
+        db.commit()
+        return no_cache_json({
+            "success": True,
+            "message": "출장 일정이 삭제되었습니다."
+        })
+    except Exception as e:
+        db.rollback()
+        return no_cache_json({
+            "success": False,
+            "message": f"출장 일정 삭제 실패: {e}"
+        }, 500)
 
 
 init_db()

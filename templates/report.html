@@ -5,6 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>현안업무 Report</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+
+  <style>
+    .report-issue-filter {
+      margin-bottom: 16px;
+    }
+
+    .report-issue-filter .issue-filter-btn {
+      color: #334155 !important;
+      font-weight: 800;
+      background: #e5e7eb !important;
+      border: 1px solid #94a3b8;
+      transition: all 0.15s ease;
+    }
+
+    .report-issue-filter .issue-filter-btn:hover {
+      background: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+
+    .report-issue-filter .issue-filter-btn.active-progress {
+      background: #1e3a5f  !important;
+      color: #ffffff !important;
+      border-color: #1e3a5f   !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+    }
+
+    .report-issue-filter .issue-filter-btn.active-done {
+      background: #1e3a5f  !important;
+      color: #ffffff !important;
+      border-color: #1e3a5f  !important;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+  </style>
 </head>
 <body class="report-page-body">
   <div class="report-page report-page-wide">
@@ -20,6 +53,21 @@
       </div>
     </div>
 
+    <div class="issue-top-filter report-issue-filter">
+      <button
+        type="button"
+        class="issue-filter-btn {% if current_status == '진행 중' %}active-progress{% endif %}"
+        onclick="location.href='{{ url_for('report_page', filter=current_filter, status='진행 중') }}'">
+        진행 중
+      </button>
+      <button
+        type="button"
+        class="issue-filter-btn {% if current_status == '완료' %}active-done{% endif %}"
+        onclick="location.href='{{ url_for('report_page', filter=current_filter, status='완료') }}'">
+        완료
+      </button>
+    </div>
+
     <div class="report-summary-grid report-summary-grid-wide">
       <div class="report-summary-card report-summary-card-main">
         <div class="label">전체선박</div>
@@ -27,8 +75,8 @@
       </div>
 
       <div class="report-summary-card warning">
-        <div class="label">CRITICAL 선박수</div>
-        <div class="value">{{ critical_vessel_count }}</div>
+        <div class="label">CRITICAL 건수</div>
+        <div class="value">{{ critical_issue_count }}</div>
       </div>
     </div>
 
@@ -40,32 +88,37 @@
             <th>Type</th>
             <th>관리사</th>
             <th>선주감독</th>
-            <th>항차계획</th>
             <th>No.</th>
             <th>현안업무</th>
+            <th>상태</th>
             <th>Critical</th>
           </tr>
         </thead>
         <tbody>
-          {% for row in report_rows %}
-          <tr>
-            <td class="left strong">{{ row.name }}</td>
-            <td>{{ row.vessel_type or '' }}</td>
-            <td class="left">{{ row.management_company or '' }}</td>
-            <td>{{ row.owner_supervisor or '' }}</td>
-            <td class="left">{{ row.voyage_plan or '' }}</td>
-            <td>{{ row.issue_no }}</td>
-            <td class="left">{{ row.issue_text }}</td>
-<td class="{% if row.issue_critical == 1 %}critical-yes{% endif %}">
-  {% if row.issue_critical == 1 %}
-    YES
-  {% else %}
-    NO
-  {% endif %}
-</td>
-            </td>
-          </tr>
-          {% endfor %}
+          {% if report_rows %}
+            {% for row in report_rows %}
+            <tr>
+              <td class="left strong">{{ row.name }}</td>
+              <td>{{ row.vessel_type or '' }}</td>
+              <td class="left">{{ row.management_company or '' }}</td>
+              <td>{{ row.owner_supervisor or '' }}</td>
+              <td>{{ row.issue_no }}</td>
+              <td class="left">{{ row.issue_text }}</td>
+              <td>{{ row.issue_status }}</td>
+              <td class="{% if row.issue_critical == 1 %}critical-yes{% endif %}">
+                {% if row.issue_critical == 1 %}
+                  YES
+                {% else %}
+                  NO
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align:center;">표시할 현안업무가 없습니다.</td>
+            </tr>
+          {% endif %}
         </tbody>
       </table>
     </div>
