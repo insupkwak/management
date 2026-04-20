@@ -1,3 +1,163 @@
+/* =========================================================
+   선박관리사이트 style.css 전체 교체본
+   - 중복 선언 정리 완료
+   - INDEX 메인 입력화면 색상은 :root 변수로 일괄 조정
+========================================================= */
+
+
+/* =========================
+   공통 변수
+========================= */
+:root {
+  /* 전체 공통 */
+  --bg-main: #0f172a;
+  --bg-sub: #111827;
+  --bg-soft: #172036;
+  --bg-map: #0b1220;
+
+  --panel-main: #1f2937;
+  --panel-soft: #1e293b;
+
+  --line-main: #374151;
+  --line-soft: #334155;
+
+  --text-main: #f9fafb;
+  --text-soft: #d1d5db;
+  --text-muted: #9ca3af;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --secondary: #374151;
+  --secondary-hover: #4b5563;
+
+  --success: #16a34a;
+  --warning: #ea580c;
+  --danger: #dc2626;
+  --info: #2563eb;
+
+  /* =====================================================
+     INDEX 메인페이지 입력화면 전용 색상 컨트롤
+     아래 값만 바꾸면 좌측 입력영역 전체 톤 변경 가능
+  ===================================================== */
+
+  /* 1. 좌측 사이드 전체 */
+  --idx-sidebar-bg: #111827;
+  --idx-sidebar-border: #374151;
+  --idx-page-title: #f9fafb;
+  --idx-page-text: #e5e7eb;
+  --idx-page-text-soft: #9ca3af;
+
+  /* 2. 카드 공통 */
+  --idx-card-bg: #1f2937;
+  --idx-card-border: #374151;
+  --idx-card-title: #f8fafc;
+  --idx-card-radius: 14px;
+
+  /* 3. 아코디언 */
+  --idx-accordion-bg: rgba(15, 23, 42, 0.32);
+  --idx-accordion-border: #334155;
+  --idx-accordion-header-bg: #1e293b;
+  --idx-accordion-header-text: #f8fafc;
+  --idx-accordion-header-icon: #93c5fd;
+  --idx-accordion-content-bg: transparent;
+
+  /* 4. 라벨 / 기본 입력칸 */
+  --idx-label-text: #ffffff;
+  --idx-input-bg: #0f172a;
+  --idx-input-border: #4b5563;
+  --idx-input-text: #f9fafb;
+  --idx-input-placeholder: #94a3b8;
+  --idx-input-focus-border: #60a5fa;
+  --idx-input-focus-shadow: rgba(96, 165, 250, 0.20);
+  --idx-input-radius: 10px;
+
+  /* 5. 기본 버튼 */
+  --idx-btn-primary-bg: #2563eb;
+  --idx-btn-primary-hover: #1d4ed8;
+  --idx-btn-primary-text: #ffffff;
+
+  --idx-btn-secondary-bg: #374151;
+  --idx-btn-secondary-hover: #4b5563;
+  --idx-btn-secondary-text: #f8fafc;
+
+  /* 6. 진행중 / 완료 상단 필터 */
+  --idx-filter-wrap-border: #475569;
+  --idx-filter-btn-bg: rgba(255, 255, 255, 0.05);
+  --idx-filter-btn-text: #f8fafc;
+  --idx-filter-divider: #475569;
+  --idx-filter-active-progress-bg: #2563eb;
+  --idx-filter-active-progress-text: #ffffff;
+  --idx-filter-active-done-bg: #16a34a;
+  --idx-filter-active-done-text: #ffffff;
+
+  /* 7. 현안/COC/SIRE/Condition 카드 */
+  --idx-dynamic-card-bg: rgba(255, 255, 255, 0.03);
+  --idx-dynamic-card-border: #475569;
+  --idx-dynamic-card-title-text: #f8fafc;
+  --idx-dynamic-card-divider: #475569;
+  --idx-dynamic-card-meta-bg: rgba(255, 255, 255, 0.04);
+  --idx-dynamic-card-meta-text: #f8fafc;
+
+  /* 8. 동적 카드 내부 입력칸 */
+  --idx-dynamic-input-bg: #0b1733;
+  --idx-dynamic-input-border: #4b5563;
+  --idx-dynamic-input-text: #f8fafc;
+  --idx-dynamic-input-placeholder: #94a3b8;
+
+  /* 9. 진행/완료 상태 버튼 */
+  --idx-status-btn-bg: rgba(255, 255, 255, 0.04);
+  --idx-status-btn-text: #f8fafc;
+  --idx-status-btn-divider: #475569;
+  --idx-status-active-progress-bg: #3677c7;
+  --idx-status-active-progress-text: #ffffff;
+  --idx-status-active-done-bg: #2f9e44;
+  --idx-status-active-done-text: #ffffff;
+
+  /* 10. 추가 버튼 */
+  --idx-add-btn-bg: #374151;
+  --idx-add-btn-hover: #4b5563;
+  --idx-add-btn-text: #f8fafc;
+
+  /* 11. 체크박스 */
+  --idx-critical-text: #f8fafc;
+  --idx-critical-accent: #2563eb;
+
+  /* 12. 관리사 비용 카드 */
+  --idx-cost-card-bg: rgba(15, 23, 42, 0.28);
+  --idx-cost-card-border: #334155;
+  --idx-cost-group-title: #f8fafc;
+  --idx-cost-subtitle: #93c5fd;
+  --idx-cost-divider: rgba(148, 163, 184, 0.22);
+  --idx-cost-label: #e2e8f0;
+  --idx-cost-input-bg: #0b1733;
+  --idx-cost-input-border: #3b4b68;
+  --idx-cost-input-text: #f8fafc;
+
+  /* 13. Report / 외부링크 버튼 */
+  --idx-report-btn-bg: #1e3a5f;
+  --idx-report-btn-hover: #16304d;
+  --idx-report-btn-text: #ffffff;
+
+  --idx-external-link-bg: #1e3a5f;
+  --idx-external-link-hover: #16304d;
+  --idx-external-link-text: #ffffff;
+
+  /* 14. 선박 리스트 */
+  --idx-vessel-item-bg: #0f172a;
+  --idx-vessel-item-border: #374151;
+  --idx-vessel-item-title: #f9fafb;
+  --idx-vessel-item-text: #cbd5e1;
+  --idx-vessel-item-soft: #9ca3af;
+
+  /* 15. Footer */
+  --idx-footer-text: #9ca3af;
+  --idx-footer-border: #374151;
+}
+
+
+/* =========================
+   기본
+========================= */
 * {
   box-sizing: border-box;
 }
@@ -5,8 +165,8 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: #e5e7eb;
+  background: var(--bg-main);
+  color: var(--text-main);
 }
 
 .container {
@@ -15,30 +175,37 @@ body {
   height: 100vh;
 }
 
+/* =========================
+   좌측 사이드바
+========================= */
 .sidebar {
-  background: #111827;
-  border-right: 1px solid #374151;
+  background: var(--idx-sidebar-bg);
+  border-right: 1px solid var(--idx-sidebar-border);
   padding: 20px;
   overflow-y: auto;
+  color: var(--idx-page-text);
 }
 
 .sidebar h1 {
   margin: 0 0 16px;
   font-size: 22px;
-  color: #f9fafb;
+  color: var(--idx-page-title);
 }
 
 .sidebar p {
   margin: 0 0 18px;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--idx-page-text-soft);
   line-height: 1.5;
 }
 
+/* =========================
+   카드 공통
+========================= */
 .card {
-  background: #1f2937;
-  border: 1px solid #374151;
-  border-radius: 14px;
+  background: var(--idx-card-bg);
+  border: 1px solid var(--idx-card-border);
+  border-radius: var(--idx-card-radius);
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -46,13 +213,17 @@ body {
 .card h2 {
   margin: 0 0 12px;
   font-size: 16px;
+  color: var(--idx-card-title);
 }
 
+/* =========================
+   폼 공통
+========================= */
 label {
   display: block;
   margin: 8px 0 4px;
   font-size: 12px;
-  color: #d1d5db;
+  color: var(--idx-label-text);
 }
 
 input,
@@ -61,7 +232,7 @@ textarea,
 button {
   width: 100%;
   border-radius: 10px;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--idx-input-border);
   padding: 10px 14px;
   font-size: 12px;
 }
@@ -70,8 +241,21 @@ input,
 select,
 textarea {
   height: 42px;
-  background: #0f172a;
-  color: #f9fafb;
+  background: var(--idx-input-bg);
+  color: var(--idx-input-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--idx-input-placeholder);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--idx-input-focus-border);
+  box-shadow: 0 0 0 3px var(--idx-input-focus-shadow);
 }
 
 textarea {
@@ -84,28 +268,35 @@ textarea {
   resize: none !important;
 }
 
+/* =========================
+   버튼 공통
+========================= */
 button {
   margin-top: 0;
-  background: #2563eb;
-  color: white;
+  background: var(--idx-btn-primary-bg);
+  color: var(--idx-btn-primary-text);
   border: none;
   font-weight: bold;
   cursor: pointer;
 }
 
 button:hover {
-  background: #1d4ed8;
+  background: var(--idx-btn-primary-hover);
 }
 
 .btn-secondary {
-  background: #374151;
+  background: var(--idx-btn-secondary-bg);
+  color: var(--idx-btn-secondary-text);
   margin-top: 8px;
 }
 
 .btn-secondary:hover {
-  background: #4b5563;
+  background: var(--idx-btn-secondary-hover);
 }
 
+/* =========================
+   지도
+========================= */
 .map-wrap {
   position: relative;
   height: 100vh;
@@ -115,9 +306,12 @@ button:hover {
 #map {
   width: 100%;
   height: 100%;
-  background: #0b1220;
+  background: var(--bg-map);
 }
 
+/* =========================
+   지도 상단 툴바
+========================= */
 .map-toolbar {
   position: absolute;
   top: 10px;
@@ -253,6 +447,9 @@ button:hover {
   white-space: nowrap;
 }
 
+/* =========================
+   선박 리스트
+========================= */
 .vessel-list {
   display: flex;
   flex-direction: column;
@@ -262,8 +459,8 @@ button:hover {
 }
 
 .vessel-item {
-  background: #0f172a;
-  border: 1px solid #374151;
+  background: var(--idx-vessel-item-bg);
+  border: 1px solid var(--idx-vessel-item-border);
   border-radius: 12px;
   padding: 12px;
 }
@@ -271,13 +468,13 @@ button:hover {
 .vessel-item strong {
   display: block;
   margin-bottom: 8px;
-  color: #f9fafb;
+  color: var(--idx-vessel-item-title);
   font-size: 14px;
 }
 
 .vessel-item small {
   display: block;
-  color: #9ca3af;
+  color: var(--idx-vessel-item-soft);
   line-height: 1.5;
 }
 
@@ -295,6 +492,24 @@ button:hover {
   width: auto;
 }
 
+.list-value-green {
+  color: #16a34a;
+  font-weight: 900;
+}
+
+.list-value-orange {
+  color: #ea580c;
+  font-weight: 900;
+}
+
+.list-value-normal {
+  color: var(--idx-vessel-item-text);
+  font-weight: 600;
+}
+
+/* =========================
+   지도 선박 아이콘
+========================= */
 .ship-icon-wrap {
   background: transparent;
   border: none;
@@ -333,6 +548,9 @@ button:hover {
   pointer-events: none;
 }
 
+/* =========================
+   지도 라벨 레이어
+========================= */
 .label-layer {
   position: absolute;
   inset: 0;
@@ -353,6 +571,9 @@ button:hover {
   pointer-events: none;
 }
 
+/* =========================
+   지도 상세 카드
+========================= */
 .map-label {
   position: absolute;
   width: 285px;
@@ -360,31 +581,41 @@ button:hover {
   max-height: calc(100vh - 110px);
   background: rgba(255, 255, 255, 0.98);
   color: #111827;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 2px solid #d1d5db;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-  padding: 9px 10px;
+  padding: 11px 14px 10px 12px;
   font-size: 11px;
-  line-height: 1.26;
+  line-height: 1.28;
   pointer-events: auto;
   z-index: 900;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: #c7b9a3 transparent;
 }
 
 .map-label::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 .map-label::-webkit-scrollbar-track {
-  background: #e7dfd3;
-  border-radius: 8px;
+  background: transparent;
+  margin: 12px 0;
+  border-radius: 999px;
 }
 
 .map-label::-webkit-scrollbar-thumb {
   background: #c7b9a3;
-  border-radius: 8px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: 42px;
+}
+
+.map-label::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .map-label.green {
@@ -397,32 +628,253 @@ button:hover {
   background: #fff7ed;
 }
 
+.map-label.yellow {
+  border-color: #eab308;
+  background: #fefce8;
+}
+
 .map-label.gray {
   border-color: #94a3b8;
   background: #f8fafc;
 }
 
 .map-label .title {
-  font-size: 12px;
-  font-weight: 800;
-  margin-bottom: 4px;
-  color: #1f2937;
-}
-
-.map-label .line {
-  margin-bottom: 1px;
-  word-break: keep-all;
-}
-
-.map-label .label-name {
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 10px;
   color: #111827;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
 }
 
-.label-section {
+.map-card-section {
+  margin-bottom: 12px;
+}
+
+.map-card-section:last-of-type {
+  margin-bottom: 5px;
+}
+
+.map-card-section + .map-card-section {
+  border-top: 1px solid rgba(148, 163, 184, 0.30);
+  padding-top: 8px;
+}
+
+.map-card-section-title {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 9px;
+  margin-bottom: 6px;
+  background: rgba(15, 23, 42, 0.07);
+  border-left: 4px solid #94a3b8;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 900;
+  color: #111827;
+  line-height: 1;
+}
+
+.map-label.green .map-card-section-title {
+  border-left-color: #22c55e;
+}
+
+.map-label.orange .map-card-section-title {
+  border-left-color: #f97316;
+}
+
+.map-label.yellow .map-card-section-title {
+  border-left-color: #eab308;
+}
+
+.map-label.gray .map-card-section-title {
+  border-left-color: #94a3b8;
+}
+
+.map-card-section-body {
+  padding: 0 1px;
+}
+
+.map-card-section .line {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 3px;
+}
+
+.map-card-section .line-label {
+  text-align: left;
+  font-weight: 800;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.22;
+}
+
+.map-card-section .line-value {
+  text-align: left;
+  color: #111827;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1.22;
+}
+
+.map-card-section .line-value.map-value-red {
+  color: #dc2626 !important;
+  font-weight: 900;
+}
+
+.map-card-section .issue-line {
+  display: grid;
+  grid-template-columns: 15px 1fr;
+  gap: 6px;
+  align-items: start;
   margin-bottom: 4px;
 }
 
+.map-card-section .issue-empty {
+  padding: 1px 0;
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.map-card-section .aor-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 40px 82px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.30);
+}
+
+.map-card-section .aor-summary-row:last-child {
+  border-bottom: none;
+}
+
+.map-card-section .aor-summary-label {
+  font-weight: 700;
+  color: #334155;
+  text-align: left;
+  font-size: 10.8px;
+  line-height: 1.15;
+}
+
+.map-card-section .aor-summary-count {
+  font-weight: 700;
+  color: #334155;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 10.5px;
+  line-height: 1.15;
+}
+
+.map-card-section .aor-summary-amount {
+  text-align: right;
+  font-weight: 900;
+  color: #1d4ed8;
+  white-space: nowrap;
+  font-size: 10.8px;
+  line-height: 1.15;
+}
+
+.map-card-section .reports-block {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.map-card-section .report-row-compact {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.map-card-section .report-left {
+  font-size: 10.8px;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.15;
+}
+
+.map-card-section .report-right {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+}
+
+.map-card-section .report-half-btn {
+  height: 26px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 0;
+}
+
+.map-label-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.30);
+}
+
+.map-mini-btn {
+  width: auto;
+  min-width: 44px;
+  padding: 5px 9px;
+  margin-top: 0;
+  font-size: 10.5px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.map-mini-btn.edit {
+  background: #2563eb;
+}
+
+.map-mini-btn.close {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.map-mini-btn.close:hover {
+  background: #1d4ed8;
+}
+
+.map-value-green {
+  color: #16a34a;
+  font-weight: 900;
+}
+
+.map-value-orange {
+  color: #ea580c;
+  font-weight: 900;
+}
+
+.map-value-red {
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.map-value-blue {
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.map-value-normal {
+  color: #374151;
+  font-weight: 600;
+}
+
+/* =========================
+   지도 상세 카드 내부 공통
+========================= */
 .section-title {
   font-size: 12px;
   font-weight: 800;
@@ -441,6 +893,9 @@ button:hover {
   color: #94a3b8;
 }
 
+/* =========================
+   Reports 블록
+========================= */
 .reports-block {
   margin-top: 2px;
   display: flex;
@@ -497,66 +952,9 @@ button:hover {
   cursor: not-allowed;
 }
 
-.map-label-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.map-mini-btn {
-  width: auto;
-  min-width: 48px;
-  padding: 6px 10px;
-  margin-top: 0;
-  font-size: 11px;
-  border-radius: 8px;
-  font-weight: 800;
-}
-
-.map-mini-btn.edit {
-  background: #2563eb;
-}
-
-.map-value-green {
-  color: #16a34a;
-  font-weight: 900;
-}
-
-.map-value-orange {
-  color: #ea580c;
-  font-weight: 900;
-}
-
-.map-value-red {
-  color: #dc2626;
-  font-weight: 900;
-}
-
-.map-value-blue {
-  color: #2563eb;
-  font-weight: 800;
-}
-
-.map-value-normal {
-  color: #374151;
-  font-weight: 600;
-}
-
-.list-value-green {
-  color: #16a34a;
-  font-weight: 900;
-}
-
-.list-value-orange {
-  color: #ea580c;
-  font-weight: 900;
-}
-
-.list-value-normal {
-  color: #cbd5e1;
-  font-weight: 600;
-}
-
+/* =========================
+   입력 보조
+========================= */
 .issue-input-row {
   position: relative;
   display: block;
@@ -608,6 +1006,9 @@ button:hover {
   flex: 0 0 auto;
 }
 
+/* =========================
+   Report 관리
+========================= */
 .report-topbar {
   display: flex;
   justify-content: space-between;
@@ -631,14 +1032,7 @@ button:hover {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.report-upload-btn {
-  width: 100%;
-  margin-top: 10px;
-  height: 42px;
-  border-radius: 10px;
-}
-
-.report-link-grid .report-view-btn {
+.report-view-btn {
   width: 100%;
   min-width: 0;
   margin-top: 0;
@@ -647,24 +1041,70 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.report-view-btn {
-  width: 100%;
-  min-width: 0;
-  margin-top: 0;
-  padding: 10px 14px;
   border-radius: 8px;
-  background: #1e3a5f;
-  color: #ffffff;
+  background: var(--idx-report-btn-bg);
+  color: var(--idx-report-btn-text);
   font-size: 13px;
   font-weight: 700;
 }
 
 .report-view-btn:hover {
-  background: #16304d;
+  background: var(--idx-report-btn-hover);
 }
 
+.report-upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.report-upload-btn {
+  width: 100%;
+  margin: 0;
+  height: 42px;
+  border-radius: 10px;
+}
+
+/* =========================
+   외부 링크 버튼
+========================= */
+.report-external-links {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.report-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--idx-external-link-bg);
+  color: var(--idx-external-link-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.report-link-btn:hover {
+  background: var(--idx-external-link-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  opacity: 0.95;
+}
+
+.report-link-btn:active {
+  transform: scale(0.97);
+}
+
+/* =========================
+   Report 페이지 공통
+========================= */
 .report-page-body {
   margin: 0;
   background: #f5f7fa;
@@ -784,6 +1224,9 @@ button:hover {
   border-top: 3px solid #c2410c;
 }
 
+/* =========================
+   Report 표 공통
+========================= */
 .report-table-wrap {
   background: #ffffff;
   border: 1px solid #d7dde5;
@@ -840,11 +1283,24 @@ button:hover {
   font-weight: 700 !important;
 }
 
+.report-table td.due-blue {
+  color: #2563eb !important;
+  font-weight: 700;
+}
+
 .report-table td.critical-yes {
   color: #dc2626 !important;
   font-weight: 700 !important;
 }
 
+.due-red {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* =========================
+   폼 하단 버튼
+========================= */
 #vesselForm > button[type="submit"] {
   width: 100%;
   margin-top: 8px;
@@ -854,6 +1310,9 @@ button:hover {
   margin-top: 10px;
 }
 
+/* =========================
+   라인 표시
+========================= */
 .line {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -887,6 +1346,10 @@ button:hover {
   display: none !important;
 }
 
+.hidden-by-filter {
+  display: none !important;
+}
+
 .sub-section-title {
   margin: 18px 0 10px;
   font-size: 14px;
@@ -894,6 +1357,9 @@ button:hover {
   color: #f9fafb;
 }
 
+/* =========================
+   SIRE 입력부
+========================= */
 .sire-grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr 1fr;
@@ -935,7 +1401,7 @@ button:hover {
 }
 
 .sire-row {
-  border: 1px solid #334155;
+  border: 1px solid var(--idx-dynamic-card-border);
   border-radius: 12px;
   padding: 10px;
   background: rgba(15, 23, 42, 0.28);
@@ -963,6 +1429,9 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: var(--idx-dynamic-input-bg);
+  border: 1px solid var(--idx-dynamic-input-border);
+  color: var(--idx-dynamic-input-text);
 }
 
 .sire-row textarea {
@@ -970,12 +1439,14 @@ button:hover {
 }
 
 .sire-row input::placeholder,
-.sire-row textarea::placeholder,
-.coc-grid input::placeholder {
-  color: #94a3b8;
+.sire-row textarea::placeholder {
+  color: var(--idx-dynamic-input-placeholder);
   font-size: 12px;
 }
 
+/* =========================
+   COC 입력부
+========================= */
 .coc-grid {
   display: grid;
   grid-template-columns: 1fr 1.4fr 1fr;
@@ -998,7 +1469,7 @@ button:hover {
 }
 
 .coc-item {
-  border: 1px solid #334155;
+  border: 1px solid var(--idx-dynamic-card-border);
   border-radius: 12px;
   padding: 10px;
   background: rgba(15, 23, 42, 0.22);
@@ -1021,6 +1492,9 @@ button:hover {
   width: 100%;
   min-width: 0;
   height: 42px;
+  background: var(--idx-dynamic-input-bg);
+  border: 1px solid var(--idx-dynamic-input-border);
+  color: var(--idx-dynamic-input-text);
 }
 
 .coc-item label {
@@ -1030,6 +1504,14 @@ button:hover {
   color: #cbd5e1;
 }
 
+.coc-grid input::placeholder {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* =========================
+   SIRE / Condition Report 표
+========================= */
 .sire-report-table,
 .condition-report-table {
   width: 100%;
@@ -1070,78 +1552,9 @@ button:hover {
   line-height: 1.45;
 }
 
-.due-red {
-  color: #ef4444;
-  font-weight: 700;
-}
-
-.report-table td.due-blue {
-  color: #2563eb !important;
-  font-weight: 700;
-}
-
-.custom-alert-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 99999;
-}
-
-.custom-alert-overlay.hidden {
-  display: none;
-}
-
-.custom-alert-box {
-  width: min(400px, 40vw);
-  max-height: 82vh;
-  background: #111827;
-  color: #f3f4f6;
-  border-radius: 22px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid #374151;
-}
-
-.custom-alert-title {
-  padding: 20px 24px 12px;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.custom-alert-message {
-  padding: 0 24px 20px;
-  white-space: pre-wrap;
-  line-height: 1.7;
-  overflow-y: auto;
-  max-height: 55vh;
-  font-size: 16px;
-}
-
-.custom-alert-actions {
-  padding: 0 24px 24px;
-  display: flex;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.custom-alert-ok {
-  min-width: 92px;
-  height: 52px;
-  border-radius: 999px;
-  border: 2px solid #93c5fd;
-  background: #bfdbfe;
-  color: #1e3a8a;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
+/* =========================
+   COC Report 표
+========================= */
 .coc-report-table {
   width: 100%;
   table-layout: auto;
@@ -1218,11 +1631,14 @@ button:hover {
   line-height: 1.4;
 }
 
+/* =========================
+   관리사 비용 입력카드
+========================= */
 .cost-card {
-  border: 1px solid #334155;
+  border: 1px solid var(--idx-cost-card-border);
   border-radius: 16px;
   padding: 14px;
-  background: rgba(15, 23, 42, 0.28);
+  background: var(--idx-cost-card-bg);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1231,20 +1647,20 @@ button:hover {
 .cost-group-title {
   font-size: 14px;
   font-weight: 800;
-  color: #f8fafc;
+  color: var(--idx-cost-group-title);
   margin-bottom: 6px;
 }
 
 .cost-subtitle {
   font-size: 12px;
   font-weight: 800;
-  color: #93c5fd;
+  color: var(--idx-cost-subtitle);
   margin: 6px 0 4px;
 }
 
 .cost-divider {
   height: 1px;
-  background: rgba(148, 163, 184, 0.22);
+  background: var(--idx-cost-divider);
   margin: 4px 0;
 }
 
@@ -1266,7 +1682,7 @@ button:hover {
 
 .cost-label,
 .cost-type {
-  color: #e2e8f0;
+  color: var(--idx-cost-label);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1276,9 +1692,9 @@ button:hover {
   width: 100%;
   min-width: 0;
   margin-top: 0;
-  background: #0b1733;
-  border: 1px solid #3b4b68;
-  color: #f8fafc;
+  background: var(--idx-cost-input-bg);
+  border: 1px solid var(--idx-cost-input-border);
+  color: var(--idx-cost-input-text);
   border-radius: 12px;
   height: 36px;
   padding: 8px 10px;
@@ -1290,6 +1706,9 @@ button:hover {
   text-align: right;
 }
 
+/* =========================
+   관리사 비용 Report 표
+========================= */
 .management-cost-report-table {
   width: 100%;
   table-layout: fixed;
@@ -1341,42 +1760,6 @@ button:hover {
 .management-cost-report-table .amount-cell {
   text-align: right;
   white-space: nowrap;
-}
-
-.cost-report-modal-box {
-  width: min(460px, 92vw);
-}
-
-.cost-report-modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.cost-report-modal-body label {
-  margin: 4px 0 2px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #e5e7eb;
-}
-
-.cost-report-select {
-  width: 100%;
-  height: 46px;
-  margin-top: 0;
-  border-radius: 12px;
-  background: #0b1733;
-  border: 1px solid #3b4b68;
-  color: #f8fafc;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.cost-report-cancel-btn {
-  background: #374151;
-  border-color: #6b7280;
-  color: #f3f4f6;
-  margin-right: 8px;
 }
 
 .cost-inline {
@@ -1441,6 +1824,9 @@ button:hover {
   font-weight: 400;
 }
 
+/* =========================
+   AOR 요약
+========================= */
 .aor-summary-row {
   display: grid;
   grid-template-columns: 1fr 52px 90px;
@@ -1467,6 +1853,9 @@ button:hover {
   white-space: nowrap;
 }
 
+/* =========================
+   아코디언
+========================= */
 .form-accordion {
   display: flex;
   flex-direction: column;
@@ -1474,17 +1863,17 @@ button:hover {
 }
 
 .accordion-section {
-  border: 1px solid #334155;
+  border: 1px solid var(--idx-accordion-border);
   border-radius: 16px;
-  background: rgba(15, 23, 42, 0.32);
+  background: var(--idx-accordion-bg);
   overflow: hidden;
 }
 
 .accordion-toggle {
   width: 100%;
   border: 0;
-  background: #1e293b;
-  color: #f8fafc;
+  background: var(--idx-accordion-header-bg);
+  color: var(--idx-accordion-header-text);
   font-size: 13px;
   font-weight: 800;
   text-align: left;
@@ -1499,7 +1888,7 @@ button:hover {
   content: "＋";
   font-size: 20px;
   font-weight: 700;
-  color: #93c5fd;
+  color: var(--idx-accordion-header-icon);
 }
 
 .accordion-section.open .accordion-toggle::after {
@@ -1509,219 +1898,37 @@ button:hover {
 .accordion-content {
   display: none;
   padding: 14px 16px 16px;
+  background: var(--idx-accordion-content-bg);
 }
 
 .accordion-section.open .accordion-content {
   display: block;
 }
 
-@media (max-width: 1100px) {
-  .container {
-    display: block;
-    height: 100vh;
-  }
-
-  .sidebar {
-    display: none;
-  }
-
-  .map-wrap {
-    height: 100vh;
-  }
-
-  #map {
-    height: 100vh;
-  }
-
-  .map-toolbar {
-    left: 10px;
-    right: 10px;
-    max-width: calc(100% - 20px);
-    justify-content: flex-start;
-  }
-
-  .search-box {
-    position: relative;
-    flex: 1 1 180px;
-    min-width: 160px;
-    max-width: 220px;
-  }
-
-  .toolbar-chip-btn {
-    min-width: 112px;
-  }
-
-  .coc-grid,
-  .sire-row-top,
-  .sire-row-bottom {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px) {
-  .report-page {
-    padding: 16px 10px 24px;
-  }
-
-  .report-header {
-    flex-direction: column;
-  }
-
-  .report-summary-grid-wide {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .report-header h1 {
-    font-size: 24px;
-  }
-}
-
-@media (max-width: 768px) {
-  .map-toolbar {
-    gap: 4px;
-    left: 15%;
-  }
-
-  .toolbar-chip-btn {
-    min-width: 55px;
-    padding: 3px 4px;
-  }
-
-  .toolbar-chip-label {
-    font-size: 8px;
-  }
-
-  .toolbar-chip-value {
-    font-size: 12px;
-  }
-
-  .search-box {
-    min-width: 100px;
-    max-width: 140px;
-  }
-}
-
-@media print {
-  .report-actions {
-    display: none;
-  }
-
-  .report-page {
-    max-width: none;
-    padding: 0;
-  }
-
-  .report-table-wrap {
-    border: 1px solid #cbd5e1;
-    overflow: visible;
-  }
-
-  .report-table thead th {
-    position: static;
-    background: #e5e7eb;
-    color: #111827;
-    border: 1px solid #cbd5e1;
-  }
-
-  .report-table tbody td,
-  .report-table thead th {
-    font-size: 11px;
-    padding: 7px 5px;
-  }
-}
-
-.footer {
-  margin-top: auto;
-  padding: 60px 5px 5px;
-  text-align: center;
-  font-size: 12px;
-  color: #9ca3af;
-  border-top: 1px solid #374151;
-  opacity: 0.8;
-  white-space: nowrap;
-}
-
-.footer:hover {
-  opacity: 1;
-}
-
-
-.report-link-btn {
-  display: block;
-  text-align: center;
-  padding: 10px;
-  background: var(--primary);
-  color: #fff;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: 0.2s;
-}
-
-.report-link-btn:hover {
-  background: var(--primary-hover);
-}
-
-.report-external-links {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.report-link-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  border-radius: 10px;
-  background: #1e3a5f;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-  transition: all 0.2s ease;
-}
-
-.report-link-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
-  opacity: 0.95;
-}
-
-.report-link-btn:active {
-  transform: scale(0.97);
-}
-
-
-
-
 /* =========================
-   현안업무 전체 교체본
+   현안업무 / COC / SIRE / Condition
 ========================= */
-
 .issue-top-filter {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
   margin-bottom: 12px;
-  border: 1px solid #475569;
+  border: 1px solid var(--idx-filter-wrap-border);
   border-radius: 12px;
   overflow: hidden;
 }
 
 .issue-filter-btn {
   width: 100%;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   height: 30px;
   min-height: 30px;
   max-height: 30px;
   border: 0;
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.05);
-  color: #f8fafc;
+  background: var(--idx-filter-btn-bg);
+  color: var(--idx-filter-btn-text);
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
@@ -1731,26 +1938,21 @@ button:hover {
   box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
-
 .issue-filter-btn + .issue-filter-btn {
-  border-left: 1px solid #475569;
+  border-left: 1px solid var(--idx-filter-divider);
 }
 
 .issue-filter-btn.active-progress {
-  background: #347f38;
-  color: #0f172a;
+  background: var(--idx-filter-active-progress-bg);
+  color: var(--idx-filter-active-progress-text);
 }
 
 .issue-filter-btn.active-done {
-  background: #347f38;
-  color: #0f172a;
+  background: var(--idx-filter-active-done-bg);
+  color: var(--idx-filter-active-done-text);
 }
-
-
 
 .issue-dynamic-list,
 #issueSection {
@@ -1760,10 +1962,10 @@ button:hover {
 }
 
 .issue-card {
-  border: 1px solid #475569;
+  border: 1px solid var(--idx-dynamic-card-border);
   border-radius: 14px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--idx-dynamic-card-bg);
 }
 
 .issue-card-title {
@@ -1778,8 +1980,8 @@ button:hover {
   text-align: center;
   font-size: 15px;
   font-weight: 800;
-  color: #f8fafc;
-  border-bottom: 1px solid #475569;
+  color: var(--idx-dynamic-card-title-text);
+  border-bottom: 1px solid var(--idx-dynamic-card-divider);
 }
 
 .issue-card-body {
@@ -1798,10 +2000,10 @@ button:hover {
   min-height: 84px !important;
   max-height: 84px !important;
   padding: 12px;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--idx-dynamic-input-border);
   border-radius: 12px;
-  background: #0b1733;
-  color: #f8fafc;
+  background: var(--idx-dynamic-input-bg);
+  color: var(--idx-dynamic-input-text);
   font-size: 13px;
   line-height: 1.45;
   font-family: Arial, sans-serif;
@@ -1811,11 +2013,17 @@ button:hover {
   box-sizing: border-box;
 }
 
+.issue-text::placeholder,
+.issue-textarea::placeholder,
+.issue-card textarea::placeholder {
+  color: var(--idx-dynamic-input-placeholder);
+}
+
 .issue-meta-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  border-top: 1px solid #475569;
+  border-top: 1px solid var(--idx-dynamic-card-divider);
 }
 
 .issue-meta-cell {
@@ -1825,22 +2033,15 @@ button:hover {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.04);
-  color: #f8fafc;
+  background: var(--idx-dynamic-card-meta-bg);
+  color: var(--idx-dynamic-card-meta-text);
   font-size: 12px;
   font-weight: 800;
 }
 
 .issue-meta-cell + .issue-meta-cell {
-  border-left: 1px solid #475569;
+  border-left: 1px solid var(--idx-dynamic-card-divider);
 }
-
-
-
-
-
-
-
 
 .issue-critical-label {
   display: inline-flex;
@@ -1850,8 +2051,8 @@ button:hover {
   margin: 0;
   padding: 0;
   line-height: 1;
-  color: #f8fafc;
-  font-size: 12px;
+  color: var(--idx-critical-text);
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -1864,12 +2065,12 @@ button:hover {
 
 .issue-critical,
 .issue-critical-label input[type="checkbox"] {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   margin: 0;
   padding: 0;
-  flex: 0 0 13px;
-  accent-color: #2563eb;
+  flex: 0 0 12px;
+  accent-color: var(--idx-critical-accent);
   vertical-align: middle;
 }
 
@@ -1902,6 +2103,7 @@ button:hover {
   background: #2563eb;
   color: #ffffff;
 }
+
 .issue-check-grid {
   grid-template-rows: 24px 40px;
 }
@@ -1912,34 +2114,17 @@ button:hover {
   padding: 1px 4px;
 }
 
-.issue-critical-label {
-  font-size: 11px;
-}
-
-.issue-critical,
-.issue-critical-label input[type="checkbox"] {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 12px;
-}
-
-
-
-
-
-
-
 .issue-status-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  border-top: 1px solid #475569;
+  border-top: 1px solid var(--idx-dynamic-card-divider);
 }
 
 .issue-status-btn {
   width: 100%;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   height: 30px;
   min-height: 30px;
   max-height: 30px;
@@ -1951,38 +2136,39 @@ button:hover {
   line-height: 1;
   font-size: 14px;
   font-weight: 800;
-  background: rgba(255, 255, 255, 0.04);
-  color: #f8fafc;
+  background: var(--idx-status-btn-bg);
+  color: var(--idx-status-btn-text);
   box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 .issue-status-btn + .issue-status-btn {
-  border-left: 1px solid #475569;
+  border-left: 1px solid var(--idx-status-btn-divider);
 }
 
 .issue-status-btn.active-progress {
-  background: #3677c7;
-  color: #0f172a;
+  background: var(--idx-status-active-progress-bg);
+  color: var(--idx-status-active-progress-text);
 }
 
 .issue-status-btn.active-done {
-  background: #3677c7;
-  color: #0f172a;
+  background: var(--idx-status-active-done-bg);
+  color: var(--idx-status-active-done-text);
 }
 
 .issue-add-btn,
-#addIssueBtn {
+#addIssueBtn,
+#addCocBtn,
+#addSireBtn,
+#addConditionBtn {
   width: 100%;
   height: 30px;
   min-height: 30px;
   margin-top: 14px;
   border-radius: 12px;
-  background: #374151;
-  color: #f8fafc;
+  background: var(--idx-add-btn-bg);
+  color: var(--idx-add-btn-text);
   font-size: 14px;
   font-weight: 800;
   display: flex;
@@ -1992,8 +2178,11 @@ button:hover {
 }
 
 .issue-add-btn:hover,
-#addIssueBtn:hover {
-  background: #4b5563;
+#addIssueBtn:hover,
+#addCocBtn:hover,
+#addSireBtn:hover,
+#addConditionBtn:hover {
+  background: var(--idx-add-btn-hover);
 }
 
 .issue-empty-message {
@@ -2005,7 +2194,9 @@ button:hover {
   border-radius: 12px;
 }
 
-
+/* =========================
+   동적 카드 레이아웃
+========================= */
 .dynamic-card-grid-2,
 .dynamic-card-grid-3 {
   display: grid;
@@ -2040,6 +2231,9 @@ button:hover {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  background: var(--idx-dynamic-input-bg);
+  border: 1px solid var(--idx-dynamic-input-border);
+  color: var(--idx-dynamic-input-text);
 }
 
 .dynamic-card-field textarea {
@@ -2055,250 +2249,9 @@ button:hover {
   height: 44px;
 }
 
-.hidden-by-filter {
-  display: none !important;
-}
-
-
-
-
-
 /* =========================
-   지도 상세카드 가독성 개선 - 조정용 주석 버전
-   아래 숫자만 바꾸면서 맞춰보세요
+   Sire / Condition 안내판 표시
 ========================= */
-
-.map-label {
-  padding: 11px 12px 10px;   /* 카드 전체 안쪽 여백
-                                 첫번째=위, 두번째=좌우, 세번째=아래
-                                 세로를 더 줄이고 싶으면 11,10 값을 줄이기 */
-  border-radius: 16px;       /* 카드 둥글기 */
-  font-size: 11px;           /* 카드 기본 글자 크기 */
-  line-height: 1.28;         /* 전체 줄간격, 작을수록 더 촘촘 */
-}
-
-.map-label .title {
-  font-size: 16px;           /* 선박명 글자 크기 */
-  font-weight: 900;
-  margin-bottom: 10px;       /* 선박명 아래 여백 */
-  color: #111827;
-  letter-spacing: -0.2px;
-  line-height: 1.1;
-}
-
-.map-card-section {
-  margin-bottom: 12px;       /* 섹션과 섹션 사이 아래 간격 */
-}
-
-.map-card-section:last-of-type {
-  margin-bottom: 5px;        /* 마지막 섹션 아래 간격 */
-}
-
-.map-card-section + .map-card-section {
-  border-top: 1px solid rgba(148, 163, 184, 0.30);
-  padding-top: 8px;          /* 다음 섹션 시작 여백 */
-}
-
-.map-card-section-title {
-  display: flex;
-  align-items: center;
-  min-height: 30px;              /* 제목바 높이 */
-  padding: 0 9px;                /* 제목바 좌우 여백 */
-  margin-bottom: 6px;            /* 제목바와 본문 사이 간격 */
-  background: rgba(15, 23, 42, 0.07);
-  border-left: 4px solid #94a3b8; /* 기본색, 아래 상태별 색으로 덮어씀 */
-  border-radius: 7px;
-  font-size: 11.5px;             /* 제목 글자 크기 */
-  font-weight: 900;
-  color: #111827;
-  line-height: 1;
-}
-
-/* =========================
-   제목 왼쪽 색상 = 안내판 색상과 동일
-   필요시 아래 색상코드만 바꾸면 됩니다
-========================= */
-
-.map-label.green .map-card-section-title {
-  border-left-color: #22c55e;    /* green 안내판 */
-}
-
-.map-label.orange .map-card-section-title {
-  border-left-color: #f97316;    /* orange 안내판 */
-}
-
-.map-label.yellow .map-card-section-title {
-  border-left-color: #eab308;    /* yellow 안내판 */
-}
-
-.map-label.gray .map-card-section-title {
-  border-left-color: #94a3b8;    /* gray 안내판 */
-}
-
-/* yellow 안내판 배경이 없으면 같이 맞춰주기 */
-.map-label.yellow {
-  border-color: #eab308;
-  background: #fefce8;
-}
-
-.map-card-section-body {
-  padding: 0 1px;            /* 섹션 본문 좌우 안쪽 여백 */
-}
-
-.map-card-section .line {
-  display: grid;
-  grid-template-columns: 92px 1fr;  /* 왼쪽 항목명 너비 / 오른쪽 값
-                                        항목명이 길면 92px를 늘리기
-                                        공간이 부족하면 줄이기 */
-  gap: 8px;                  /* 항목명과 값 사이 간격 */
-  align-items: start;
-  margin-bottom: 3px;        /* 한 줄과 다음 줄 사이 간격 */
-}
-
-.map-card-section .line-label {
-  text-align: left;
-  font-weight: 800;
-  color: #475569;
-  font-size: 11px;           /* 왼쪽 항목명 글자 크기 */
-  line-height: 1.22;
-}
-
-.map-card-section .line-value {
-  text-align: left;
-  color: #111827;
-  font-weight: 700;
-  font-size: 11px;           /* 오른쪽 값 글자 크기 */
-  line-height: 1.22;
-}
-
-.map-card-section .issue-line {
-  display: grid;
-  grid-template-columns: 15px 1fr;  /* 번호칸 / 내용칸 */
-  gap: 6px;
-  align-items: start;
-  margin-bottom: 4px;        /* 현안업무, COC, SIRE 줄 사이 여백 */
-}
-
-.map-card-section .issue-empty {
-  padding: 1px 0;
-  font-size: 10.5px;         /* "입력 없음" 크기 */
-  color: #94a3b8;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.map-card-section .aor-summary-row {
-  display: grid;
-  grid-template-columns: 1fr 40px 82px;  /* 항목 / 건수 / 금액 너비
-                                             금액이 잘리면 마지막 82px를 늘리기 */
-  align-items: center;
-  gap: 6px;
-  padding: 3px 0;            /* AOR 각 줄 위아래 여백 */
-  border-bottom: 1px dashed rgba(148, 163, 184, 0.30);
-}
-
-.map-card-section .aor-summary-row:last-child {
-  border-bottom: none;
-}
-
-.map-card-section .aor-summary-label {
-  font-weight: 700;
-  color: #334155;
-  text-align: left;
-  font-size: 10.8px;
-  line-height: 1.15;
-}
-
-.map-card-section .aor-summary-count {
-  font-weight: 700;
-  color: #334155;
-  text-align: left;
-  white-space: nowrap;
-  font-size: 10.5px;
-  line-height: 1.15;
-}
-
-.map-card-section .aor-summary-amount {
-  text-align: right;
-  font-weight: 900;
-  color: #1d4ed8;
-  white-space: nowrap;
-  font-size: 10.8px;
-  line-height: 1.15;
-}
-
-.map-card-section .reports-block {
-  margin-top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;                  /* Reports 각 줄 사이 간격 */
-}
-
-.map-card-section .report-row-compact {
-  display: grid;
-  grid-template-columns: 108px 1fr;  /* 보고서명 칸 / 버튼 영역
-                                         보고서명이 길면 108px를 늘리기 */
-  align-items: center;
-  gap: 6px;
-  padding-top: 2px;          /* 각 report 줄 위쪽 여백 */
-}
-
-.map-card-section .report-left {
-  font-size: 10.8px;         /* Reports 왼쪽 이름 글자 크기 */
-  font-weight: 800;
-  color: #1f2937;
-  line-height: 1.15;
-}
-
-.map-card-section .report-right {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;                  /* 보기 / 업로드 버튼 사이 간격 */
-  width: 100%;
-}
-
-.map-card-section .report-half-btn {
-  height: 26px;              /* report 버튼 높이 */
-  border-radius: 8px;
-  font-size: 10.5px;         /* report 버튼 글자 크기 */
-  font-weight: 800;
-  padding: 0;
-}
-
-.map-label-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;           /* 마지막 섹션과 닫기버튼 사이 간격 */
-  padding-top: 7px;          /* 닫기버튼 영역 위쪽 여백 */
-  border-top: 1px solid rgba(148, 163, 184, 0.30);
-}
-
-.map-mini-btn {
-  min-width: 44px;           /* 닫기버튼 최소 너비 */
-  padding: 5px 9px;          /* 닫기버튼 안쪽 여백 */
-  font-size: 10.5px;         /* 닫기버튼 글자 크기 */
-  border-radius: 8px;
-}
-
-.map-mini-btn.close {
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.map-mini-btn.close:hover {
-  background: #1d4ed8;
-}
-
-.map-card-section .line-value.map-value-red {
-  color: #dc2626 !important;
-  font-weight: 900;
-}
-
-/* =========================
-   Sire / Condition
-   첫줄 5칸
-========================= */
-
 .survey-inline-block {
   display: flex;
   flex-direction: column;
@@ -2345,7 +2298,6 @@ button:hover {
   font-weight: 600;
 }
 
-/* 기존 특이사항 공통 */
 .survey-inline-remark-row {
   display: grid;
   grid-template-columns: 60px 1fr;
@@ -2369,13 +2321,8 @@ button:hover {
   word-break: break-word;
 }
 
-/* =========================
-   SIRE 전용
-   특이사항 소제목 제거
-   내용 시작을 상태(결함조치 중) 아래로 정렬
-========================= */
-
-.survey-inline-remark-row-sire {
+.survey-inline-remark-row-sire,
+.survey-inline-remark-row-condition {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
   gap: 4px;
@@ -2386,40 +2333,16 @@ button:hover {
   min-height: 1px;
 }
 
-.survey-inline-remark-value-sire {
-  grid-column: 2 / 6;   /* 상태 칸 아래부터 시작 */
-  font-weight: 600;
-  color: #111827;
-}
-
-
-
-/* =========================
-   Condition Report 전용
-   특이사항 소제목 제거
-   내용 시작을 상태 칸 아래로 정렬
-========================= */
-
-.survey-inline-remark-row-condition {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
-  gap: 4px;
-  align-items: start;
-}
-
+.survey-inline-remark-value-sire,
 .survey-inline-remark-value-condition {
-  grid-column: 2 / 6;   /* 상태 칸 아래부터 시작 */
+  grid-column: 2 / 6;
   font-weight: 600;
   color: #111827;
 }
 
-
 /* =========================
-   COC 현황 안내판 표시
-   첫줄: 증서종류 / 날짜
-   둘째줄: 요약 내용만
+   COC 안내판 표시
 ========================= */
-
 .coc-inline-block {
   display: flex;
   flex-direction: column;
@@ -2476,7 +2399,7 @@ button:hover {
 }
 
 .coc-inline-summary-text {
-  grid-column: 2 / 4;   /* 번호칸 다음부터 시작 */
+  grid-column: 2 / 4;
   font-size: 10.7px;
   font-weight: 600;
   color: #475569;
@@ -2484,62 +2407,170 @@ button:hover {
   word-break: break-word;
 }
 
+/* =========================
+   모달 / 알림
+========================= */
+.custom-alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 99999;
+}
 
+.custom-alert-overlay.hidden {
+  display: none;
+}
+
+.custom-alert-box {
+  width: min(400px, 40vw);
+  max-height: 82vh;
+  background: #111827;
+  color: #f3f4f6;
+  border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #374151;
+}
+
+.custom-alert-title {
+  padding: 20px 24px 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.custom-alert-message {
+  padding: 0 24px 20px;
+  white-space: pre-wrap;
+  line-height: 1.7;
+  overflow-y: auto;
+  max-height: 55vh;
+  font-size: 16px;
+}
+
+.custom-alert-actions {
+  padding: 0 24px 24px;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.custom-alert-ok {
+  min-width: 92px;
+  height: 52px;
+  border-radius: 999px;
+  border: 2px solid #93c5fd;
+  background: #bfdbfe;
+  color: #1e3a8a;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cost-report-modal-box {
+  width: min(460px, 92vw);
+}
+
+.cost-report-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cost-report-modal-body label {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.cost-report-select {
+  width: 100%;
+  height: 46px;
+  margin-top: 0;
+  border-radius: 12px;
+  background: #0b1733;
+  border: 1px solid #3b4b68;
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cost-report-cancel-btn {
+  background: #374151;
+  border-color: #6b7280;
+  color: #f3f4f6;
+  margin-right: 8px;
+}
 
 /* =========================
-   안내판 스크롤바 길이/위치 보정
-   맨 아래에 추가
+   Footer
 ========================= */
-
-.map-label {
-  padding-right: 14px;              /* 스크롤바가 카드 끝에 너무 붙지 않게 */
-  scrollbar-gutter: stable;         /* 내용 흔들림 방지 */
-  scrollbar-color: #c7b9a3 transparent; /* Firefox */
+.footer {
+  margin-top: auto;
+  padding: 60px 5px 5px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--idx-footer-text);
+  border-top: 1px solid var(--idx-footer-border);
+  opacity: 0.8;
+  white-space: nowrap;
 }
 
-/* Chrome, Edge */
-.map-label::-webkit-scrollbar {
-  width: 10px;                      /* 스크롤바 두께 */
+.footer:hover {
+  opacity: 1;
 }
 
-.map-label::-webkit-scrollbar-track {
-  background: transparent;          /* 트랙 배경 제거 */
-  margin: 12px 0;                   /* 위아래 길이 줄이기 */
-  border-radius: 999px;
-}
+/* =========================
+   반응형
+========================= */
+@media (max-width: 1100px) {
+  .container {
+    display: block;
+    height: 100vh;
+  }
 
-.map-label::-webkit-scrollbar-thumb {
-  background: #c7b9a3;
-  border-radius: 999px;
-  border: 2px solid transparent;    /* thumb를 조금 더 짧고 가볍게 보이게 */
-  background-clip: padding-box;
-  min-height: 42px;
-}
+  .sidebar {
+    display: none;
+  }
 
-.map-label::-webkit-scrollbar-corner {
-  background: transparent;
-}
+  .map-wrap {
+    height: 100vh;
+  }
 
-.report-upload-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 10px;
-}
+  #map {
+    height: 100vh;
+  }
 
-.report-upload-btn {
-  width: 100%;
-  margin: 0;
-}
+  .map-toolbar {
+    left: 10px;
+    right: 10px;
+    max-width: calc(100% - 20px);
+    justify-content: flex-start;
+  }
 
-@media (max-width: 900px) {
-  .report-upload-grid {
+  .search-box {
+    position: relative;
+    flex: 1 1 180px;
+    min-width: 160px;
+    max-width: 220px;
+  }
+
+  .toolbar-chip-btn {
+    min-width: 112px;
+  }
+
+  .coc-grid,
+  .sire-row-top,
+  .sire-row-bottom {
     grid-template-columns: 1fr;
   }
-}
 
-
-@media (max-width: 1100px) {
   .label-layer.mobile-fullscreen-active {
     z-index: 1400;
     pointer-events: auto;
@@ -2549,22 +2580,22 @@ button:hover {
     display: none !important;
   }
 
- .map-label.mobile-fullscreen {
-  position: absolute !important;
-  inset: 0 !important;
-  left: 0 !important;
-  top: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  max-height: 100% !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding: 14px 14px 28px !important;
-  overflow-y: auto;
-  overflow-x: hidden;
-  z-index: 1401 !important;
-}
+  .map-label.mobile-fullscreen {
+    position: absolute !important;
+    inset: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 14px 14px 28px !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1401 !important;
+  }
 
   .map-label.mobile-fullscreen .title {
     font-size: 18px;
@@ -2630,9 +2661,7 @@ button:hover {
     font-size: 12px;
     padding: 8px 12px;
   }
-}
 
-@media (max-width: 1100px) {
   .map-label.mobile-fullscreen.green {
     background: #f0fdf4 !important;
     border: 2px solid #22c55e !important;
@@ -2651,5 +2680,84 @@ button:hover {
   .map-label.mobile-fullscreen.gray {
     background: #f8fafc !important;
     border: 2px solid #94a3b8 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .report-page {
+    padding: 16px 10px 24px;
+  }
+
+  .report-header {
+    flex-direction: column;
+  }
+
+  .report-summary-grid-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-header h1 {
+    font-size: 24px;
+  }
+
+  .report-upload-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-toolbar {
+    gap: 4px;
+    left: 15%;
+  }
+
+  .toolbar-chip-btn {
+    min-width: 55px;
+    padding: 3px 4px;
+  }
+
+  .toolbar-chip-label {
+    font-size: 8px;
+  }
+
+  .toolbar-chip-value {
+    font-size: 12px;
+  }
+
+  .search-box {
+    min-width: 100px;
+    max-width: 140px;
+  }
+}
+
+/* =========================
+   인쇄
+========================= */
+@media print {
+  .report-actions {
+    display: none;
+  }
+
+  .report-page {
+    max-width: none;
+    padding: 0;
+  }
+
+  .report-table-wrap {
+    border: 1px solid #cbd5e1;
+    overflow: visible;
+  }
+
+  .report-table thead th {
+    position: static;
+    background: #e5e7eb;
+    color: #111827;
+    border: 1px solid #cbd5e1;
+  }
+
+  .report-table tbody td,
+  .report-table thead th {
+    font-size: 11px;
+    padding: 7px 5px;
   }
 }

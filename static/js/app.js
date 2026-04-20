@@ -1432,9 +1432,64 @@ function initAccordion() {
     if (!toggle) return;
 
     toggle.addEventListener('click', () => {
+      const willOpen = !section.classList.contains('open');
       section.classList.toggle('open');
+
+      if (willOpen) {
+        ensureAutoBlankCardOnOpen(section);
+      }
     });
   });
+}
+
+
+function isCardActuallyVisible(card) {
+  if (!card) return false;
+  if (card.classList.contains('hidden-by-filter')) return false;
+  return getComputedStyle(card).display !== 'none';
+}
+
+function ensureAutoBlankCardOnOpen(section) {
+  if (!section) return;
+
+  if (section.querySelector('#issueSection')) {
+    const visibleCards = Array.from(section.querySelectorAll('.issue-card.issue-only-card'))
+      .filter(isCardActuallyVisible);
+
+    if (visibleCards.length === 0) {
+      addIssueCard(currentIssueFilter);
+    }
+    return;
+  }
+
+  if (section.querySelector('#cocDynamicSection')) {
+    const visibleCards = Array.from(section.querySelectorAll('.coc-card'))
+      .filter(isCardActuallyVisible);
+
+    if (visibleCards.length === 0) {
+      addCocCard(currentCocFilter);
+    }
+    return;
+  }
+
+  if (section.querySelector('#sireDynamicSection')) {
+    const visibleCards = Array.from(section.querySelectorAll('.sire-card'))
+      .filter(isCardActuallyVisible);
+
+    if (visibleCards.length === 0) {
+      addSireCard(currentSireFilter);
+    }
+    return;
+  }
+
+  if (section.querySelector('#conditionDynamicSection')) {
+    const visibleCards = Array.from(section.querySelectorAll('.condition-card'))
+      .filter(isCardActuallyVisible);
+
+    if (visibleCards.length === 0) {
+      addConditionCard(currentConditionFilter);
+    }
+  }
 }
 
 async function uploadPositionExcel(file) {
@@ -2736,9 +2791,11 @@ function renderConditionCardsFromVessel(vessel) {
 }
 
 
-function addIssueCard() {
+function addIssueCard(initialStatus = '진행 중') {
   const issueSection = document.getElementById('issueSection');
   if (!issueSection) return;
+
+  const isDone = initialStatus === '완료';
 
   const card = document.createElement('div');
   card.className = 'issue-card issue-only-card';
@@ -2760,8 +2817,8 @@ function addIssueCard() {
     </div>
 
     <div class="issue-status-row">
-      <button type="button" class="issue-status-btn active-progress" data-status="진행 중">진행 중</button>
-      <button type="button" class="issue-status-btn" data-status="완료">완료</button>
+      <button type="button" class="issue-status-btn ${!isDone ? 'active-progress' : ''}" data-status="진행 중">진행 중</button>
+      <button type="button" class="issue-status-btn ${isDone ? 'active-done' : ''}" data-status="완료">완료</button>
     </div>
   `;
 
@@ -2769,8 +2826,11 @@ function addIssueCard() {
   applyIssueFilter(currentIssueFilter);
 }
 
-function addCocCard() {
+
+function addCocCard(initialStatus = '진행 중') {
   if (!cocDynamicSection) return;
+
+  const isDone = initialStatus === '완료';
 
   const card = document.createElement('div');
   card.className = 'issue-card coc-card';
@@ -2796,18 +2856,23 @@ function addCocCard() {
     </div>
 
     <div class="issue-status-row">
-      <button type="button" class="issue-status-btn coc-status-btn active-progress" data-status="진행 중">진행 중</button>
-      <button type="button" class="issue-status-btn coc-status-btn" data-status="완료">완료</button>
+      <button type="button" class="issue-status-btn coc-status-btn ${!isDone ? 'active-progress' : ''}" data-status="진행 중">진행 중</button>
+      <button type="button" class="issue-status-btn coc-status-btn ${isDone ? 'active-done' : ''}" data-status="완료">완료</button>
     </div>
   `;
+
   cocDynamicSection.appendChild(card);
   setupDateInputs();
   applyCocFilter(currentCocFilter);
 }
 
 
-function addSireCard() {
+
+
+function addSireCard(initialBucket = '진행 중') {
   if (!sireDynamicSection) return;
+
+  const defaultStatus = initialBucket === '완료' ? '수검완료' : '예정';
 
   const card = document.createElement('div');
   card.className = 'issue-card sire-card';
@@ -2823,9 +2888,9 @@ function addSireCard() {
         <div class="dynamic-card-field">
           <label>상태</label>
           <select class="sire-status-select sire-like-status-select">
-            <option value="예정" selected>예정</option>
-            <option value="결함조치 중">결함조치 중</option>
-            <option value="수검완료">수검완료</option>
+            <option value="예정" ${defaultStatus === '예정' ? 'selected' : ''}>예정</option>
+            <option value="결함조치 중" ${defaultStatus === '결함조치 중' ? 'selected' : ''}>결함조치 중</option>
+            <option value="수검완료" ${defaultStatus === '수검완료' ? 'selected' : ''}>수검완료</option>
           </select>
         </div>
       </div>
@@ -2852,15 +2917,16 @@ function addSireCard() {
       </div>
     </div>
   `;
+
   sireDynamicSection.appendChild(card);
   setupDateInputs();
   applySireFilter(currentSireFilter);
 }
 
-
-
-function addConditionCard() {
+function addConditionCard(initialBucket = '진행 중') {
   if (!conditionDynamicSection) return;
+
+  const defaultStatus = initialBucket === '완료' ? '수검완료' : '예정';
 
   const card = document.createElement('div');
   card.className = 'issue-card condition-card';
@@ -2876,9 +2942,9 @@ function addConditionCard() {
         <div class="dynamic-card-field">
           <label>상태</label>
           <select class="condition-status-select sire-like-status-select">
-            <option value="예정" selected>예정</option>
-            <option value="결함조치 중">결함조치 중</option>
-            <option value="수검완료">수검완료</option>
+            <option value="예정" ${defaultStatus === '예정' ? 'selected' : ''}>예정</option>
+            <option value="결함조치 중" ${defaultStatus === '결함조치 중' ? 'selected' : ''}>결함조치 중</option>
+            <option value="수검완료" ${defaultStatus === '수검완료' ? 'selected' : ''}>수검완료</option>
           </select>
         </div>
       </div>
@@ -2905,10 +2971,12 @@ function addConditionCard() {
       </div>
     </div>
   `;
+
   conditionDynamicSection.appendChild(card);
   setupDateInputs();
   applyConditionFilter(currentConditionFilter);
 }
+
 
 function fillFormByVessel(index) {
   const vessel = vessels[index];
