@@ -54,6 +54,18 @@
       margin: 0;
     }
 
+    .status-text-planned {
+      color: #2563eb;
+    }
+
+    .status-text-progress {
+      color: #ea580c;
+    }
+
+    .status-text-done {
+      color: #16a34a;
+    }
+
     @media (max-width: 1200px) {
       .report-summary-grid.report-summary-grid-wide {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -66,8 +78,6 @@
       }
     }
   </style>
-
-
 </head>
 <body class="report-page-body">
   {% set view_status = current_status if current_status else '진행 중' %}
@@ -147,7 +157,7 @@
         </thead>
         <tbody>
           {% if report_rows %}
-            {% for row in report_rows %}
+            {% for row in report_rows|sort(attribute='sire_date') %}
             <tr>
               <td class="sire-name-cell">{{ row.name }}</td>
               <td>{{ row.size }}</td>
@@ -157,7 +167,11 @@
               <td>{{ row.sire_no }}</td>
               <td>{{ row.sire_type }}</td>
               <td>{{ row.sire_date }}</td>
-              <td>{{ row.sire_status }}</td>
+              <td>
+                <span class="{% if row.sire_status == '예정' %}status-text-planned{% elif row.sire_status == '결함조치 중' %}status-text-progress{% elif row.sire_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.sire_status }}
+                </span>
+              </td>
               <td>{{ row.sire_findings }}</td>
               <td>{{ row.sire_open_findings }}</td>
               <td class="sire-remark-cell">{{ row.sire_remark }}</td>

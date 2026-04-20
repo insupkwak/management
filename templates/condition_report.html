@@ -6,8 +6,7 @@
   <title>Condition Report</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
 
- 
- <style>
+  <style>
     .report-issue-filter {
       margin-bottom: 16px;
     }
@@ -26,16 +25,16 @@
     }
 
     .report-issue-filter .issue-filter-btn.active-progress {
-      background: #1e3a5f  !important;
+      background: #1e3a5f !important;
       color: #ffffff !important;
-      border-color: #1e3a5f  !important;
+      border-color: #1e3a5f !important;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
     }
 
     .report-issue-filter .issue-filter-btn.active-done {
-      background: #1e3a5f  !important;
+      background: #1e3a5f !important;
       color: #ffffff !important;
-      border-color: #1e3a5f  !important;
+      border-color: #1e3a5f !important;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
     }
 
@@ -43,7 +42,6 @@
       border-top: 3px solid #2563eb;
     }
 
-    /* KPI 4칸 한 줄 고정 */
     .report-summary-grid.report-summary-grid-wide {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -54,6 +52,18 @@
     .report-summary-grid.report-summary-grid-wide .report-summary-card {
       min-width: 0;
       margin: 0;
+    }
+
+    .status-text-planned {
+      color: #2563eb;
+    }
+
+    .status-text-progress {
+      color: #ea580c;
+    }
+
+    .status-text-done {
+      color: #16a34a;
     }
 
     @media (max-width: 1200px) {
@@ -68,8 +78,6 @@
       }
     }
   </style>
-
-
 </head>
 <body class="report-page-body">
   {% set view_status = current_status if current_status else '진행 중' %}
@@ -81,15 +89,15 @@
         <div class="report-subtitle">선박별 Condition Report 현황</div>
       </div>
 
-<div class="report-actions">
-  <button
-    class="report-action-btn"
-    onclick="location.href='{{ url_for('condition_quarter_report_page', filter=current_filter) }}'">
-    분기별 현황
-  </button>
-  <button class="report-action-btn" onclick="window.print()">인쇄</button>
-  <button class="report-action-btn secondary" onclick="window.close()">닫기</button>
-</div>
+      <div class="report-actions">
+        <button
+          class="report-action-btn"
+          onclick="location.href='{{ url_for('condition_quarter_report_page', filter=current_filter) }}'">
+          분기별 현황
+        </button>
+        <button class="report-action-btn" onclick="window.print()">인쇄</button>
+        <button class="report-action-btn secondary" onclick="window.close()">닫기</button>
+      </div>
     </div>
 
     <div class="issue-top-filter report-issue-filter">
@@ -146,14 +154,18 @@
         </thead>
         <tbody>
           {% if vessels %}
-            {% for vessel in vessels %}
+            {% for vessel in vessels|sort(attribute='condition_report_date') %}
             <tr>
               <td class="condition-name-cell">{{ vessel.name }}</td>
               <td>{{ vessel.management_company }}</td>
               <td>{{ vessel.owner_supervisor }}</td>
               <td>{{ vessel.condition_report_type }}</td>
               <td class="date-cell">{{ vessel.condition_report_date }}</td>
-              <td class="status-cell">{{ vessel.condition_report_status }}</td>
+              <td class="status-cell">
+                <span class="{% if vessel.condition_report_status == '예정' %}status-text-planned{% elif vessel.condition_report_status == '결함조치 중' %}status-text-progress{% elif vessel.condition_report_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ vessel.condition_report_status }}
+                </span>
+              </td>
               <td class="count-cell">{{ vessel.condition_report_findings }}</td>
               <td class="count-cell open">{{ vessel.condition_report_open_findings }}</td>
               <td class="condition-remark-cell">{{ vessel.condition_report_remark }}</td>

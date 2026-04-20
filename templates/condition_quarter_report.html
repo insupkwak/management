@@ -55,10 +55,10 @@
     }
 
     .condition-quarter-table .ship-col {
-    width: 240px !important;
-  min-width: 240px;
-  max-width: 240px;
-}
+      width: 240px !important;
+      min-width: 240px;
+      max-width: 240px;
+    }
 
     .condition-quarter-table .type-col {
       width: 150px;
@@ -70,6 +70,18 @@
 
     .condition-quarter-table .status-col {
       width: 90px;
+    }
+
+    .status-text-planned {
+      color: #2563eb;
+    }
+
+    .status-text-progress {
+      color: #ea580c;
+    }
+
+    .status-text-done {
+      color: #16a34a;
     }
 
     @media print {
@@ -138,19 +150,35 @@
 
               <td>{{ row.q1_type }}</td>
               <td>{{ row.q1_date }}</td>
-              <td>{{ row.q1_status }}</td>
+              <td>
+                <span class="{% if row.q1_status == '예정' %}status-text-planned{% elif row.q1_status == '결함조치 중' %}status-text-progress{% elif row.q1_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.q1_status }}
+                </span>
+              </td>
 
               <td>{{ row.q2_type }}</td>
               <td>{{ row.q2_date }}</td>
-              <td>{{ row.q2_status }}</td>
+              <td>
+                <span class="{% if row.q2_status == '예정' %}status-text-planned{% elif row.q2_status == '결함조치 중' %}status-text-progress{% elif row.q2_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.q2_status }}
+                </span>
+              </td>
 
               <td>{{ row.q3_type }}</td>
               <td>{{ row.q3_date }}</td>
-              <td>{{ row.q3_status }}</td>
+              <td>
+                <span class="{% if row.q3_status == '예정' %}status-text-planned{% elif row.q3_status == '결함조치 중' %}status-text-progress{% elif row.q3_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.q3_status }}
+                </span>
+              </td>
 
               <td>{{ row.q4_type }}</td>
               <td>{{ row.q4_date }}</td>
-              <td>{{ row.q4_status }}</td>
+              <td>
+                <span class="{% if row.q4_status == '예정' %}status-text-planned{% elif row.q4_status == '결함조치 중' %}status-text-progress{% elif row.q4_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.q4_status }}
+                </span>
+              </td>
             </tr>
             {% endfor %}
           {% else %}

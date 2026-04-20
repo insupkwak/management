@@ -25,17 +25,67 @@
     }
 
     .report-issue-filter .issue-filter-btn.active-progress {
-      background: #1e3a5f  !important;
+      background: #1e3a5f !important;
       color: #ffffff !important;
-      border-color: #1e3a5f   !important;
+      border-color: #1e3a5f !important;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
     }
 
     .report-issue-filter .issue-filter-btn.active-done {
-      background: #1e3a5f  !important;
+      background: #1e3a5f !important;
       color: #ffffff !important;
-      border-color: #1e3a5f  !important;
+      border-color: #1e3a5f !important;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    }
+
+    .report-table.issue-report-table {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .report-table.issue-report-table th,
+    .report-table.issue-report-table td {
+      word-break: break-word;
+      vertical-align: middle;
+    }
+
+    .issue-name-col {
+      width: 180px;
+    }
+
+    .issue-type-col {
+      width: 90px;
+    }
+
+    .issue-mgmt-col {
+      width: 140px;
+    }
+
+    .issue-owner-col {
+      width: 120px;
+    }
+
+    .issue-no-col {
+      width: 70px;
+    }
+
+    .issue-text-col {
+      width: 700px;
+      min-width: 700px;
+      max-width: 700px;
+    }
+
+    .issue-status-col {
+      width: 90px;
+    }
+
+    .issue-critical-col {
+      width: 90px;
+    }
+
+    .issue-text-cell {
+      white-space: normal;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -81,7 +131,17 @@
     </div>
 
     <div class="report-table-wrap">
-      <table class="report-table">
+      <table class="report-table issue-report-table">
+        <colgroup>
+          <col class="issue-name-col">
+          <col class="issue-type-col">
+          <col class="issue-mgmt-col">
+          <col class="issue-owner-col">
+          <col class="issue-no-col">
+          <col class="issue-text-col">
+          <col class="issue-status-col">
+          <col class="issue-critical-col">
+        </colgroup>
         <thead>
           <tr>
             <th>선박명</th>
@@ -103,7 +163,7 @@
               <td class="left">{{ row.management_company or '' }}</td>
               <td>{{ row.owner_supervisor or '' }}</td>
               <td>{{ row.issue_no }}</td>
-              <td class="left">{{ row.issue_text }}</td>
+              <td class="left issue-text-cell">{{ row.issue_text }}</td>
               <td>{{ row.issue_status }}</td>
               <td class="{% if row.issue_critical == 1 %}critical-yes{% endif %}">
                 {% if row.issue_critical == 1 %}

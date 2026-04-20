@@ -72,6 +72,18 @@
       width: 90px;
     }
 
+    .status-text-planned {
+      color: #2563eb;
+    }
+
+    .status-text-progress {
+      color: #ea580c;
+    }
+
+    .status-text-done {
+      color: #16a34a;
+    }
+
     @media print {
       .report-actions {
         display: none !important;
@@ -138,19 +150,35 @@
 
               <td>{{ row.h1_type }}</td>
               <td>{{ row.h1_date }}</td>
-              <td>{{ row.h1_status }}</td>
+              <td>
+                <span class="{% if row.h1_status == '예정' %}status-text-planned{% elif row.h1_status == '결함조치 중' %}status-text-progress{% elif row.h1_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.h1_status }}
+                </span>
+              </td>
 
               <td>{{ row.h2_type }}</td>
               <td>{{ row.h2_date }}</td>
-              <td>{{ row.h2_status }}</td>
+              <td>
+                <span class="{% if row.h2_status == '예정' %}status-text-planned{% elif row.h2_status == '결함조치 중' %}status-text-progress{% elif row.h2_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.h2_status }}
+                </span>
+              </td>
 
               <td>{{ row.h3_type }}</td>
               <td>{{ row.h3_date }}</td>
-              <td>{{ row.h3_status }}</td>
+              <td>
+                <span class="{% if row.h3_status == '예정' %}status-text-planned{% elif row.h3_status == '결함조치 중' %}status-text-progress{% elif row.h3_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.h3_status }}
+                </span>
+              </td>
 
               <td>{{ row.h4_type }}</td>
               <td>{{ row.h4_date }}</td>
-              <td>{{ row.h4_status }}</td>
+              <td>
+                <span class="{% if row.h4_status == '예정' %}status-text-planned{% elif row.h4_status == '결함조치 중' %}status-text-progress{% elif row.h4_status == '수검완료' %}status-text-done{% endif %}">
+                  {{ row.h4_status }}
+                </span>
+              </td>
             </tr>
             {% endfor %}
           {% else %}

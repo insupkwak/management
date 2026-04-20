@@ -1440,7 +1440,7 @@ def is_coc_due_within_1_month(value: Any) -> bool:
         return False
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     one_month_later = today + timedelta(days=30)
-    return today <= due <= one_month_later
+    return due <= one_month_later
 
 
 def has_any_coc_due(vessel: dict[str, Any]) -> bool:
