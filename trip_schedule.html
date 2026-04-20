@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>출장일정 관리</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=version) }}" />
+
+  <style>
+ 
+
+
+ :root {
+  /* 전체 배경 */
+  --trip-page-bg: #ffffff;
+
+  /* 카드 배경 */
+  --trip-card-bg: #ebf0f3;
+  --trip-card-border: #939daa;
+
+  /* 텍스트 */
+  --trip-text-main: #16202a;
+  --trip-text-soft: #3a4654;
+  --trip-text-muted: #566271;
+
+  /* 칩 */
+  --trip-chip-bg: #e9ebed;
+  --trip-chip-border: #a3afbb;
+  --trip-chip-text: #2f3f50;
+
+  /* 표 */
+  --trip-table-head: #3f4b5d;
+  --trip-table-subhead: #c9d1da;
+  --trip-table-subhead-weekend: #d0c7b4;
+  --trip-table-cell: #edf1f5;
+  --trip-table-cell-alt: #e3e8ee;
+  --trip-table-border: #aeb8c3;
+
+  /* 입력창 */
+  --trip-input-bg: #eef2f6;
+  --trip-input-border: #a4b0bc;
+  --trip-input-focus: #7f8b99;
+
+  /* 버튼 */
+  --trip-primary-btn: #4d5968;
+  --trip-primary-btn-hover: #3f4b59;
+  --trip-secondary-btn: #cfd6dd;
+  --trip-secondary-btn-hover: #bfc8d1;
+  --trip-secondary-btn-text: #2f3f50;
+
+  /* 공통 radius */
+  --trip-radius: 12px;
+}
+
+body.report-page-body {
+  background: var(--trip-page-bg) !important;
+}
+
+.trip-report-page {
+  max-width: 1880px;
+}
+
+.trip-subtitle {
+  color: var(--trip-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.trip-header-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.report-action-btn,
+.report-action-btn.secondary {
+  border-radius: var(--trip-radius);
+}
+
+.trip-info-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--trip-radius);
+  background: var(--trip-chip-bg);
+  border: 1px solid var(--trip-chip-border);
+  color: var(--trip-chip-text);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trip-section-card {
+  background: var(--trip-card-bg);
+  border: 1px solid var(--trip-card-border);
+  border-radius: var(--trip-radius);
+  padding: 18px;
+  margin-bottom: 22px;
+  box-sizing: border-box;
+}
+
+.trip-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.trip-section-head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--trip-text-main);
+}
+
+.trip-calendar-card {
+  margin-bottom: 22px;
+}
+
+.trip-calendar-wrap {
+  overflow: auto;
+  border: 1px solid var(--trip-table-border);
+  border-radius: var(--trip-radius);
+  background: var(--trip-table-cell);
+  padding: 0 0 18px 0;
+  box-sizing: border-box;
+}
+
+.trip-calendar-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  margin-bottom: 6px;
+}
+
+.trip-calendar-table th,
+.trip-calendar-table td {
+  border-right: 1px solid var(--trip-table-border);
+  border-bottom: 1px solid var(--trip-table-border);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.trip-calendar-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.trip-month-head {
+  background: var(--trip-table-head);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  height: 42px;
+  min-width: 34px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.trip-day-head {
+  background: var(--trip-table-subhead);
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 800;
+  height: 34px;
+  min-width: 34px;
+}
+
+.trip-day-head.weekend {
+  background: var(--trip-table-subhead-weekend);
+  color: #713f12;
+}
+
+.trip-day-head.today {
+  outline: 2px solid #22c55e;
+  outline-offset: -2px;
+}
+
+.trip-sticky {
+  position: sticky !important;
+  z-index: 40 !important;
+  background: #eef2f6 !important;
+  color: var(--trip-text-main) !important;
+}
+
+.trip-sticky-no {
+  left: 0;
+  min-width: 64px;
+  width: 64px;
+  max-width: 64px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trip-sticky-name {
+  left: 64px;
+  min-width: 160px;
+  width: 160px;
+  max-width: 160px;
+  padding: 0 10px;
+  text-align: left !important;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.trip-sticky-reason {
+  left: 224px;
+  min-width: 280px;
+  width: 280px;
+  max-width: 280px;
+  padding: 0 12px;
+  text-align: left !important;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 8px 0 16px rgba(100, 116, 139, 0.12);
+}
+
+.trip-row-label {
+  height: 44px;
+  background: #eef2f6;
+  color: var(--trip-text-main);
+}
+
+.trip-row-label.trip-sticky {
+  background: #eef2f6 !important;
+}
+
+.trip-day-cell {
+  min-width: 34px;
+  width: 34px;
+  height: 44px;
+  background: var(--trip-table-cell);
+  position: relative;
+}
+
+.trip-day-cell.weekend {
+  background: #f3ead3;
+}
+
+.trip-day-cell.today {
+  outline: 2px solid #22c55e;
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+.trip-day-cell.active {
+  background: var(--event-color, #93c5fd) !important;
+}
+
+.trip-day-cell.start::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.trip-day-cell.end::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.trip-empty-cell {
+  padding: 30px 16px !important;
+  color: var(--trip-text-muted);
+  background: var(--trip-table-cell);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.trip-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.trip-bottom-grid > .trip-section-card {
+  height: 100%;
+  margin-bottom: 0;
+}
+
+.trip-edit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: var(--trip-radius);
+  background: #e4eaf0;
+  border: 1px solid #bcc6d1;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.trip-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.trip-field label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--trip-text-soft);
+}
+
+.trip-field input,
+.trip-field textarea {
+  width: 100%;
+  border-radius: var(--trip-radius);
+  border: 1px solid var(--trip-input-border);
+  background: var(--trip-input-bg);
+  color: var(--trip-text-main);
+  padding: 0 14px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+  font-family: inherit;
+}
+
+.trip-field input {
+  height: 46px;
+}
+
+.trip-field textarea {
+  height: 96px;
+  padding: 12px 14px;
+  resize: none;
+  line-height: 1.45;
+}
+
+.trip-field input:focus,
+.trip-field textarea:focus {
+  border-color: var(--trip-input-focus);
+  box-shadow: 0 0 0 3px rgba(127, 139, 153, 0.18);
+}
+
+.trip-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.trip-btn {
+  height: 46px;
+  border: 0;
+  border-radius: var(--trip-radius);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trip-btn-primary {
+  background: var(--trip-primary-btn);
+  color: #ffffff;
+}
+
+.trip-btn-primary:hover {
+  background: var(--trip-primary-btn-hover);
+}
+
+.trip-btn-secondary {
+  background: var(--trip-secondary-btn);
+  color: var(--trip-secondary-btn-text);
+  border: 1px solid var(--trip-chip-border);
+}
+
+.trip-btn-secondary:hover {
+  background: var(--trip-secondary-btn-hover);
+  color: #0f172a;
+}
+
+.trip-side-note {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--trip-text-muted);
+  font-weight: 700;
+}
+
+.trip-event-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.trip-event-card .trip-table-wrap {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--trip-table-border);
+  border-radius: var(--trip-radius);
+  background: var(--trip-table-cell);
+  max-height: none;
+  min-height: 0;
+}
+
+.trip-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+}
+
+.trip-table th,
+.trip-table td {
+  border-bottom: 1px solid #d8dee6;
+  padding: 14px 10px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.trip-table th {
+  background: var(--trip-table-head);
+  color: #ffffff;
+  font-weight: 800;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.trip-table td {
+  background: var(--trip-table-cell);
+  color: var(--trip-text-main);
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.trip-table tbody tr:nth-child(even) td {
+  background: var(--trip-table-cell-alt);
+}
+
+.trip-table .center {
+  text-align: center;
+}
+
+.trip-small-btn {
+  min-width: 84px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--trip-radius);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trip-small-btn.edit {
+  background: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.trip-small-btn.edit:hover {
+  background: #cbd5e1;
+}
+
+.trip-small-btn.delete {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #d5dce4;
+}
+
+.trip-small-btn.delete:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.trip-action-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.trip-color-tag {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.trip-muted {
+  color: var(--trip-text-muted);
+  font-weight: 700;
+}
+
+.trip-reason-cell {
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+
+.report-action-btn.secondary {
+  background: var(--trip-table-head) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--trip-table-head) !important;
+  border-radius: var(--trip-radius) !important;
+}
+
+.report-action-btn.secondary:hover {
+  background: var(--trip-primary-btn-hover) !important;
+  color: #ffffff !important;
+  border-color: var(--trip-primary-btn-hover) !important;
+}
+
+@media (max-width: 1400px) {
+  .trip-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1200px) {
+  .trip-header-tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .trip-header-tools {
+    justify-content: flex-start;
+  }
+}
+
+
+
+  </style>
+</head>
+<body class="report-page-body">
+  <div class="report-page report-page-wide trip-report-page">
+    <div class="report-header">
+      <div>
+        <h1>출장일정 관리</h1>
+      
+      </div>
+
+      <div class="report-actions trip-header-tools">
+        <div class="trip-info-chip" id="tripPeriodChip">조회기간 -</div>
+        <div class="trip-info-chip" id="tripTotalChip">출장 0건</div>
+        <button type="button" class="report-action-btn secondary" onclick="goBackToMain()">닫기</button>
+      </div>
+    </div>
+
+    <section class="trip-section-card trip-calendar-card">
+      <div class="trip-section-head">
+        <h2>출장 달력</h2>
+        <div class="trip-info-chip" id="tripVisibleChip">표시 일정 0건</div>
+      </div>
+
+      <div class="trip-calendar-wrap" id="tripCalendarWrap"></div>
+    </section>
+
+    <section class="trip-bottom-grid">
+      <section class="trip-section-card" id="tripInputCard">
+        <div class="trip-edit-badge" id="tripEditBadge">신규 일정 입력</div>
+        <h2>출장 입력</h2>
+
+        <div class="trip-form-grid">
+          <div class="trip-field">
+            <label for="supervisorName">감독이름</label>
+            <input type="text" id="supervisorName" list="tripSupervisorOptions" placeholder="예: 김흥민 감독" />
+            <datalist id="tripSupervisorOptions">
+              <option value="손유석 감독"></option>
+              <option value="김흥민 감독"></option>
+              <option value="이창주 감독"></option>
+            </datalist>
+          </div>
+
+          <div class="trip-field">
+            <label for="startDate">시작날짜</label>
+            <input type="date" id="startDate" />
+          </div>
+
+          <div class="trip-field">
+            <label for="endDate">종료날짜</label>
+            <input type="date" id="endDate" />
+          </div>
+
+          <div class="trip-field">
+            <label for="tripReason">사유</label>
+            <textarea id="tripReason" rows="3" placeholder="예: 여름 휴가&#10;도크 감독&#10;검사업무"></textarea>
+          </div>
+
+          <div class="trip-form-actions">
+            <button type="button" class="trip-btn trip-btn-primary" id="saveTripBtn">저장</button>
+            <button type="button" class="trip-btn trip-btn-secondary" id="resetTripBtn">초기화</button>
+          </div>
+        </div>
+
+        <div class="trip-side-note">
+          수정 버튼을 누르면 기존 일정이 입력창에 채워집니다.<br>
+          저장 후 달력과 이벤트 표가 바로 갱신됩니다.
+        </div>
+      </section>
+
+      <section class="trip-section-card trip-event-card">
+        <div class="trip-section-head">
+          <h2>출장 이벤트</h2>
+          <div class="trip-info-chip" id="tripEventCountChip">총 0건</div>
+        </div>
+
+        <div class="trip-table-wrap">
+          <table class="trip-table">
+            <thead>
+              <tr>
+                <th style="width:70px;">No</th>
+                <th style="width:180px;">감독이름</th>
+                <th style="width:130px;">시작날짜</th>
+                <th style="width:130px;">종료날짜</th>
+                <th style="width:90px;">일수</th>
+                <th style="min-width:360px;">사유</th>
+                <th style="width:170px;">관리</th>
+              </tr>
+            </thead>
+            <tbody id="tripEventTableBody">
+              <tr>
+                <td colspan="7" class="center trip-muted">데이터 없음</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    const CALENDAR_START = "{{ calendar_start }}";
+    const CALENDAR_END = "{{ calendar_end }}";
+
+const EVENT_COLORS = [
+  "#8fb9d6",
+  "#9fbe97",
+  "#b3a9de",
+  "#a9c3d4",
+  "#d2bc74",
+  "#c09a9a",
+  "#97c0cf",
+  "#adc2a8"
+];  
+
+    let tripSchedules = [];
+    let editingTripId = null;
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function toDateKey(dateObj) {
+      return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+    }
+
+    function parseDateLocal(dateStr) {
+      const parts = String(dateStr || "").split("-");
+      if (parts.length !== 3) return null;
+      const y = Number(parts[0]);
+      const m = Number(parts[1]) - 1;
+      const d = Number(parts[2]);
+      return new Date(y, m, d);
+    }
+
+    function addDays(dateObj, days) {
+      const copy = new Date(dateObj);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    function goBackToMain() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "/";
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function buildVisibleDays() {
+      const start = parseDateLocal(CALENDAR_START);
+      const end = parseDateLocal(CALENDAR_END);
+      const days = [];
+      if (!start || !end) return days;
+
+      let cursor = new Date(start);
+      while (cursor <= end) {
+        days.push(toDateKey(cursor));
+        cursor = addDays(cursor, 1);
+      }
+      return days;
+    }
+
+    function isWeekend(dateStr) {
+      const dt = parseDateLocal(dateStr);
+      if (!dt) return false;
+      const day = dt.getDay();
+      return day === 0 || day === 6;
+    }
+
+    function getMonthGroups(dayList) {
+      const groups = [];
+      dayList.forEach((dateStr) => {
+        const dt = parseDateLocal(dateStr);
+        const label = `${dt.getFullYear()}.${pad2(dt.getMonth() + 1)}`;
+        const last = groups[groups.length - 1];
+
+        if (last && last.label === label) {
+          last.count += 1;
+        } else {
+          groups.push({ label, count: 1 });
+        }
+      });
+      return groups;
+    }
+
+    function getEventColor(item, idx) {
+      const base = Number(item.id || idx || 0);
+      return EVENT_COLORS[base % EVENT_COLORS.length];
+    }
+
+    function inclusiveDays(startDate, endDate) {
+      const start = parseDateLocal(startDate);
+      const end = parseDateLocal(endDate);
+      if (!start || !end) return 0;
+      const diff = Math.round((end - start) / 86400000);
+      return diff + 1;
+    }
+
+    function updateSummary() {
+      const periodText = `${CALENDAR_START} ~ ${CALENDAR_END}`;
+      document.getElementById("tripPeriodChip").textContent = `조회기간 ${periodText}`;
+      document.getElementById("tripTotalChip").textContent = `출장 ${tripSchedules.length}건`;
+      document.getElementById("tripVisibleChip").textContent = `표시 일정 ${tripSchedules.length}건`;
+      document.getElementById("tripEventCountChip").textContent = `총 ${tripSchedules.length}건`;
+    }
+
+    function renderCalendar() {
+      const wrap = document.getElementById("tripCalendarWrap");
+      const dayList = buildVisibleDays();
+      const monthGroups = getMonthGroups(dayList);
+      const todayKey = toDateKey(new Date());
+
+      let html = `
+        <table class="trip-calendar-table">
+          <thead>
+            <tr>
+              <th class="trip-month-head trip-sticky trip-sticky-no" rowspan="2">No</th>
+              <th class="trip-month-head trip-sticky trip-sticky-name" rowspan="2">감독이름</th>
+              <th class="trip-month-head trip-sticky trip-sticky-reason" rowspan="2">사유</th>
+      `;
+
+      monthGroups.forEach((group) => {
+        html += `<th class="trip-month-head" colspan="${group.count}">${group.label}</th>`;
+      });
+
+      html += `</tr><tr>`;
+
+      dayList.forEach((dateStr) => {
+        const dt = parseDateLocal(dateStr);
+        const classes = ["trip-day-head"];
+        if (isWeekend(dateStr)) classes.push("weekend");
+        if (dateStr === todayKey) classes.push("today");
+        html += `<th class="${classes.join(" ")}">${dt.getDate()}</th>`;
+      });
+
+      html += `</tr></thead><tbody>`;
+
+      if (!tripSchedules.length) {
+        html += `
+          <tr>
+            <td class="trip-row-label trip-sticky trip-sticky-no">-</td>
+            <td class="trip-row-label trip-sticky trip-sticky-name">-</td>
+            <td class="trip-row-label trip-sticky trip-sticky-reason">등록된 출장 일정이 없습니다.</td>
+            <td class="trip-empty-cell" colspan="${dayList.length}">출장 일정 입력 후 달력에 표시됩니다.</td>
+          </tr>
+        `;
+      } else {
+        tripSchedules.forEach((item, idx) => {
+          const color = getEventColor(item, idx);
+
+          html += `
+            <tr>
+              <td class="trip-row-label trip-sticky trip-sticky-no">${idx + 1}</td>
+              <td class="trip-row-label trip-sticky trip-sticky-name">${escapeHtml(item.supervisor_name || "")}</td>
+              <td class="trip-row-label trip-sticky trip-sticky-reason">${escapeHtml(item.reason || "")}</td>
+          `;
+
+          dayList.forEach((dateStr) => {
+            const active = item.start_date <= dateStr && item.end_date >= dateStr;
+            const classes = ["trip-day-cell"];
+            if (isWeekend(dateStr)) classes.push("weekend");
+            if (dateStr === todayKey) classes.push("today");
+            if (active) classes.push("active");
+            if (active && dateStr === item.start_date) classes.push("start");
+            if (active && dateStr === item.end_date) classes.push("end");
+
+            const title = `${item.supervisor_name || ""} | ${item.start_date || ""} ~ ${item.end_date || ""} | ${item.reason || ""}`;
+            const style = active ? ` style="--event-color:${color};"` : "";
+
+            html += `<td class="${classes.join(" ")}"${style} title="${escapeHtml(title)}"></td>`;
+          });
+
+          html += `</tr>`;
+        });
+      }
+
+      html += `</tbody></table>`;
+      wrap.innerHTML = html;
+    }
+
+    function renderEventTable() {
+      const tbody = document.getElementById("tripEventTableBody");
+
+      if (!tripSchedules.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="center trip-muted">데이터 없음</td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = tripSchedules.map((item, idx) => {
+        const color = getEventColor(item, idx);
+        return `
+          <tr>
+            <td class="center">${idx + 1}</td>
+            <td>
+              <span class="trip-color-tag" style="background:${color};"></span>
+              ${escapeHtml(item.supervisor_name || "")}
+            </td>
+            <td>${escapeHtml(item.start_date || "")}</td>
+            <td>${escapeHtml(item.end_date || "")}</td>
+            <td class="center">${inclusiveDays(item.start_date, item.end_date)}일</td>
+            <td class="trip-reason-cell">${escapeHtml(item.reason || "")}</td>
+            <td class="center">
+              <div class="trip-action-stack">
+                <button type="button" class="trip-small-btn edit" onclick="editTripSchedule(${item.id})">수정</button>
+                <button type="button" class="trip-small-btn delete" onclick="deleteTripSchedule(${item.id})">삭제</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function resetTripForm() {
+      editingTripId = null;
+      document.getElementById("tripEditBadge").textContent = "신규 일정 입력";
+      document.getElementById("saveTripBtn").textContent = "저장";
+      document.getElementById("supervisorName").value = "";
+      document.getElementById("startDate").value = CALENDAR_START;
+      document.getElementById("endDate").value = CALENDAR_START;
+      document.getElementById("tripReason").value = "";
+    }
+
+    function editTripSchedule(id) {
+      const item = tripSchedules.find((x) => Number(x.id) === Number(id));
+      if (!item) return;
+
+      editingTripId = Number(id);
+      document.getElementById("tripEditBadge").textContent = `수정 중 ID ${id}`;
+      document.getElementById("saveTripBtn").textContent = "수정";
+      document.getElementById("supervisorName").value = item.supervisor_name || "";
+      document.getElementById("startDate").value = item.start_date || "";
+      document.getElementById("endDate").value = item.end_date || "";
+      document.getElementById("tripReason").value = item.reason || "";
+
+      const inputCard = document.getElementById("tripInputCard");
+      if (inputCard) {
+        inputCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    async function deleteTripSchedule(id) {
+      if (!confirm("이 출장 일정을 삭제하시겠습니까?")) return;
+
+      try {
+        const response = await fetch(`/api/trip-schedules/${id}`, {
+          method: "DELETE",
+          cache: "no-store"
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          alert(data.message || "삭제 중 오류가 발생했습니다.");
+          return;
+        }
+
+        if (editingTripId === Number(id)) {
+          resetTripForm();
+        }
+
+        await loadTripSchedules();
+      } catch (error) {
+        alert("삭제 중 오류가 발생했습니다.");
+      }
+    }
+
+    async function saveTripSchedule() {
+      const supervisorName = document.getElementById("supervisorName").value.trim();
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const reason = document.getElementById("tripReason").value.trim();
+
+      if (!supervisorName) {
+        alert("감독이름을 입력해주세요.");
+        return;
+      }
+
+      if (!startDate || !endDate) {
+        alert("시작날짜와 종료날짜를 입력해주세요.");
+        return;
+      }
+
+      if (endDate < startDate) {
+        alert("종료날짜는 시작날짜보다 빠를 수 없습니다.");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/trip-schedules", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          cache: "no-store",
+          body: JSON.stringify({
+            id: editingTripId,
+            supervisorName,
+            startDate,
+            endDate,
+            reason
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          alert(data.message || "저장 중 오류가 발생했습니다.");
+          return;
+        }
+
+        resetTripForm();
+        await loadTripSchedules();
+      } catch (error) {
+        alert("저장 중 오류가 발생했습니다.");
+      }
+    }
+
+    async function loadTripSchedules() {
+      try {
+        const response = await fetch(`/api/trip-schedules?start=${encodeURIComponent(CALENDAR_START)}&end=${encodeURIComponent(CALENDAR_END)}`, {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          alert(data.message || "출장 일정 조회 중 오류가 발생했습니다.");
+          return;
+        }
+
+        tripSchedules = Array.isArray(data.items) ? data.items : [];
+        updateSummary();
+        renderCalendar();
+        renderEventTable();
+      } catch (error) {
+        alert("출장 일정 조회 중 오류가 발생했습니다.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("saveTripBtn").addEventListener("click", saveTripSchedule);
+      document.getElementById("resetTripBtn").addEventListener("click", resetTripForm);
+
+      resetTripForm();
+      loadTripSchedules();
+    });
+  </script>
+</body>
+</html>
