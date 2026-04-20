@@ -1738,7 +1738,7 @@ if (labelMode === 'one' && renderTargets.length === 1) {
   }
 
   const left = Math.max(16, Math.round((wrapWidth - boxW) / 2));
-  const top = Math.max(40, Math.round((wrapHeight - boxH) * 0.28));
+  const top = Math.max(40, Math.round((wrapHeight - boxH) * 0.24));
 
   createEdgeLabel(item, left, top, boxW, boxH, 'center');
   return;
@@ -1790,10 +1790,6 @@ if (labelMode === 'one' && renderTargets.length === 1) {
 
 function updateLeaderLines() {
   labelObjects.forEach(obj => {
-    if (obj.side === 'mobile' || !obj.line) {
-      return;
-    }
-
     const point = map.latLngToContainerPoint([obj.item.vessel.latitude, obj.item.vessel.longitude]);
     const rect = obj.label.getBoundingClientRect();
     const wrapRect = mapWrap.getBoundingClientRect();
