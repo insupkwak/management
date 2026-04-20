@@ -1739,10 +1739,11 @@ if (labelMode === 'one' && renderTargets.length === 1) {
 
   const left = Math.max(16, Math.round((wrapWidth - boxW) / 2));
 
-  const topMin = 40;          // 최소 상단 여백
-  const bottomMargin = 28;    // 하단 여백, 이 값을 늘리면 더 위로 올라감
-
   const desiredTop = Math.round((wrapHeight - boxH) * 0.28);
+
+  const topMin = 20;          // 최소 상단 여백
+  const bottomMargin = 40;    // 하단 여백, 이 값을 늘리면 더 위로 올라감
+
   const maxTop = Math.max(topMin, wrapHeight - boxH - bottomMargin);
   const top = Math.min(Math.max(topMin, desiredTop), maxTop);
 
