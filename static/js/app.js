@@ -1493,6 +1493,7 @@ function clearNameMarkers() {
 
 function clearLabels() {
   labelLayer.innerHTML = '';
+  labelLayer.classList.remove('mobile-fullscreen-active');
   labelObjects = [];
 }
 
@@ -1604,11 +1605,35 @@ function drawLeader(line, x1, y1, x2, y2) {
   line.style.transform = `rotate(${angle}deg)`;
 }
 
+
+function isMobileFullscreenLabel() {
+  return window.innerWidth <= 1100;
+}
+
 function createEdgeLabel(item, left, top, width, height, side) {
   const box = document.createElement('div');
   box.innerHTML = makeLabelHtml(item.vessel, item.index);
 
   const label = box.firstElementChild;
+
+  if (side === 'mobile') {
+    label.classList.add('mobile-fullscreen');
+    label.style.left = '0px';
+    label.style.top = '0px';
+    label.style.width = `${mapWrap.clientWidth}px`;
+    label.style.height = `${mapWrap.clientHeight}px`;
+    labelLayer.classList.add('mobile-fullscreen-active');
+    labelLayer.appendChild(label);
+
+    labelObjects.push({
+      label,
+      line: null,
+      item,
+      side
+    });
+    return;
+  }
+
   label.style.left = `${left}px`;
   label.style.top = `${top}px`;
   label.style.width = `${width}px`;
@@ -1636,6 +1661,29 @@ function createEdgeLabel(item, left, top, width, height, side) {
   } else if (side === 'bottom') {
     toX = left + width / 2;
     toY = top;
+  } else if (side === 'center') {
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
+    const dx = fromX - centerX;
+    const dy = fromY - centerY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) {
+        toX = left;
+        toY = centerY;
+      } else {
+        toX = left + width;
+        toY = centerY;
+      }
+    } else {
+      if (dy < 0) {
+        toX = centerX;
+        toY = top;
+      } else {
+        toX = centerX;
+        toY = top + height;
+      }
+    }
   }
 
   drawLeader(line, fromX, fromY, toX, toY);
@@ -1648,10 +1696,6 @@ function createEdgeLabel(item, left, top, width, height, side) {
   });
 }
 
-function getCurrentlyVisibleTargetVessels() {
-  const bounds = map.getBounds();
-  return getFilteredVessels().filter(vessel => bounds.contains([vessel.latitude, vessel.longitude]));
-}
 
 function renderExternalLabels() {
   clearLabels();
@@ -1666,17 +1710,39 @@ function renderExternalLabels() {
   if (labelMode === 'one' && activeLabelIndex !== null) {
     const vessel = vessels[activeLabelIndex];
     if (vessel && getFilteredVessels().includes(vessel)) {
-      renderTargets = [{ vessel, index: activeLabelIndex }];
+      const point = map.latLngToContainerPoint([vessel.latitude, vessel.longitude]);
+      renderTargets = [{ vessel, index: activeLabelIndex, point }];
     }
   } else {
     const currentlyVisible = getCurrentlyVisibleTargetVessels();
     renderTargets = currentlyVisible.map(vessel => ({
       vessel,
-      index: vessels.findIndex(v => v === vessel)
+      index: vessels.findIndex(v => v === vessel),
+      point: map.latLngToContainerPoint([vessel.latitude, vessel.longitude])
     }));
   }
 
   if (!renderTargets.length) return;
+
+  const boxW = 400;
+  const boxH = 650;
+  const gap = 10;
+
+  /* 단일 선택일 때는 알림판을 화면 중앙 쪽에 두고 리드선 유지 */
+if (labelMode === 'one' && renderTargets.length === 1) {
+  const item = renderTargets[0];
+
+  if (isMobileFullscreenLabel()) {
+    createEdgeLabel(item, 0, 0, wrapWidth, wrapHeight, 'mobile');
+    return;
+  }
+
+  const left = Math.max(16, Math.round((wrapWidth - boxW) / 2));
+  const top = Math.max(40, Math.round((wrapHeight - boxH) * 0.28));
+
+  createEdgeLabel(item, left, top, boxW, boxH, 'center');
+  return;
+}
 
   const topItems = [];
   const bottomItems = [];
@@ -1686,12 +1752,9 @@ function renderExternalLabels() {
   const centerX = wrapWidth / 2;
   const centerY = wrapHeight / 2;
 
-  renderTargets.forEach(({ vessel, index }) => {
-    const point = map.latLngToContainerPoint([vessel.latitude, vessel.longitude]);
-    const item = { vessel, index, point };
-
-    const dx = point.x - centerX;
-    const dy = point.y - centerY;
+  renderTargets.forEach((item) => {
+    const dx = item.point.x - centerX;
+    const dy = item.point.y - centerY;
 
     if (Math.abs(dx) > Math.abs(dy)) {
       if (dx < 0) leftItems.push(item);
@@ -1706,10 +1769,6 @@ function renderExternalLabels() {
   bottomItems.sort((a, b) => a.point.x - b.point.x);
   leftItems.sort((a, b) => a.point.y - b.point.y);
   rightItems.sort((a, b) => a.point.y - b.point.y);
-
-  const boxW = 400;
-  const boxH = 560;
-  const gap = 10;
 
   const topY = 70;
   const bottomY = wrapHeight - boxH;
@@ -1727,8 +1786,14 @@ function renderExternalLabels() {
   rightItems.forEach((item, i) => createEdgeLabel(item, rightX, rightSlots[i], boxW, boxH, 'right'));
 }
 
+
+
 function updateLeaderLines() {
   labelObjects.forEach(obj => {
+    if (obj.side === 'mobile' || !obj.line) {
+      return;
+    }
+
     const point = map.latLngToContainerPoint([obj.item.vessel.latitude, obj.item.vessel.longitude]);
     const rect = obj.label.getBoundingClientRect();
     const wrapRect = mapWrap.getBoundingClientRect();
@@ -1753,11 +1818,35 @@ function updateLeaderLines() {
     } else if (obj.side === 'bottom') {
       toX = left + width / 2;
       toY = top;
+    } else if (obj.side === 'center') {
+      const centerX = left + width / 2;
+      const centerY = top + height / 2;
+      const dx = point.x - centerX;
+      const dy = point.y - centerY;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) {
+          toX = left;
+          toY = centerY;
+        } else {
+          toX = left + width;
+          toY = centerY;
+        }
+      } else {
+        if (dy < 0) {
+          toX = centerX;
+          toY = top;
+        } else {
+          toX = centerX;
+          toY = top + height;
+        }
+      }
     }
 
     drawLeader(obj.line, point.x, point.y, toX, toY);
   });
 }
+
 
 function renderList() {
   vesselList.innerHTML = '';
