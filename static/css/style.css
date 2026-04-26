@@ -2761,3 +2761,223 @@ button:hover {
     padding: 7px 5px;
   }
 }
+
+
+
+/* =========================
+   입력화면 직각 처리
+   현안업무, COC, SIRE, Condition Report
+========================= */
+
+/* 상단 진행 중, 완료 필터 직각 */
+.issue-top-filter {
+  border-radius: 0 !important;
+}
+
+/* 입력 카드 전체 직각 */
+.issue-card,
+.issue-card.issue-only-card,
+.issue-card.coc-card,
+.issue-card.sire-card,
+.issue-card.condition-card {
+  border-radius: 0 !important;
+}
+
+/* 카드 내부 입력칸 직각 */
+.issue-card input,
+.issue-card select,
+.issue-card textarea,
+.issue-text,
+.issue-textarea {
+  border-radius: 0 !important;
+}
+
+/* 현안업무 내부 메타, 상태 버튼 직각 */
+.issue-meta-row,
+.issue-meta-cell,
+.issue-status-row,
+.issue-status-btn,
+.issue-check-btn {
+  border-radius: 0 !important;
+}
+
+/* COC, SIRE, Condition 기존 입력 블록도 직각 */
+.coc-item,
+.coc-item input,
+.sire-row,
+.sire-row input,
+.sire-row select,
+.sire-row textarea {
+  border-radius: 0 !important;
+}
+
+/* 동적 입력 필드 공통 직각 */
+.dynamic-card-field input,
+.dynamic-card-field select,
+.dynamic-card-field textarea {
+  border-radius: 0 !important;
+}
+
+
+/* =========================
+   추가 버튼 직각 처리
+   현안업무, COC, SIRE, Condition
+========================= */
+
+#addIssueBtn,
+#addCocBtn,
+#addSireBtn,
+#addConditionBtn,
+.add-issue-btn,
+.add-coc-btn,
+.add-sire-btn,
+.add-condition-btn {
+  border-radius: 0 !important;
+}
+
+
+/* =========================
+   좌측 입력화면 전체 직각 처리
+   아코디언, 대메뉴 카드, 버튼
+========================= */
+
+/* 좌측 대메뉴 카드 전체 직각 */
+.sidebar .card {
+  border-radius: 0 !important;
+}
+
+/* 아코디언 메뉴 직각 */
+.sidebar .accordion-section,
+.sidebar .accordion-toggle,
+.sidebar .accordion-content {
+  border-radius: 0 !important;
+}
+
+/* 아코디언 내부 버튼도 직각 */
+.sidebar .accordion-toggle {
+  border-radius: 0 !important;
+}
+
+/* 저장, 초기화 버튼 직각 */
+#vesselForm > button,
+#vesselForm button,
+#resetBtn,
+.btn-secondary {
+  border-radius: 0 !important;
+}
+
+/* Report 관리 버튼 직각 */
+.report-view-btn,
+.report-upload-btn {
+  border-radius: 0 !important;
+}
+
+/* 담당감독 업무 사이트 버튼 직각 */
+.report-link-btn {
+  border-radius: 0 !important;
+}
+
+/* 추가 버튼 직각 */
+#addIssueBtn,
+#addCocBtn,
+#addSireBtn,
+#addConditionBtn,
+.add-issue-btn,
+.add-coc-btn,
+.add-sire-btn,
+.add-condition-btn,
+.issue-add-btn,
+.coc-add-btn,
+.sire-add-btn,
+.condition-add-btn,
+.dynamic-add-btn {
+  border-radius: 0 !important;
+}
+
+/* 입력화면의 일반 버튼 전체 직각 */
+.sidebar button,
+.sidebar a.report-link-btn {
+  border-radius: 0 !important;
+}
+
+
+/* =========================
+   선박정보, 관리사 비용, 현재위치 입력칸 직각 처리
+========================= */
+
+/* 선박정보 입력칸 */
+#vesselName,
+#vesselType,
+#managementCompany,
+#managementSupervisor,
+#operationManager,
+#ownerSupervisor,
+#teamName,
+#builder,
+#size,
+#deliveryDate,
+#nextDryDock,
+#voyagePlan,
+#cargoStatus {
+  border-radius: 0 !important;
+}
+
+/* 관리사 비용 입력칸 */
+.cost-card,
+.cost-card input,
+.cost-card select,
+.cost-card textarea,
+#opexContractYear,
+#opexContractCrewAmount,
+#opexContractTechAmount,
+#opexActualCrewCount,
+#opexActualCrewAmount,
+#opexActualTechCount,
+#opexActualTechAmount,
+#aorActualCrewCount,
+#aorActualCrewAmount,
+#aorActualTechCount,
+#aorActualTechAmount,
+#aorUnclaimedCrewCount,
+#aorUnclaimedCrewAmount,
+#aorUnclaimedTechCount,
+#aorUnclaimedTechAmount,
+#costRemark {
+  border-radius: 0 !important;
+}
+
+/* 현재위치 입력칸 */
+#latitude,
+#longitude {
+  border-radius: 0 !important;
+}
+
+/* 좌측 입력화면 전체 input/select/textarea 최종 직각 보정 */
+.sidebar input,
+.sidebar select,
+.sidebar textarea {
+  border-radius: 0 !important;
+}
+
+/* =========================
+   선박 리스트 화면 직각 처리
+========================= */
+
+/* 선박 리스트 카드 내부 항목 */
+.vessel-list,
+.vessel-item {
+  border-radius: 0 !important;
+}
+
+/* 선박 리스트 안의 수정/삭제 버튼 */
+.vessel-item button,
+.vessel-item .actions button,
+.vessel-item .btn-delete {
+  border-radius: 0 !important;
+}
+
+/* 선박 리스트가 들어있는 카드까지 직각 보정 */
+.card:has(#vesselList),
+.card:has(.vessel-list) {
+  border-radius: 0 !important;
+}
