@@ -821,6 +821,15 @@ def init_db() -> None:
 def normalize_name(name: Any) -> str:
     return str(name or "").strip().lower()
 
+def normalize_vessel_cost_key(value: Any) -> str:
+    text = str(value or "").strip().upper()
+
+    text = re.sub(r"^(M/T|M/V|MT|MV)\s+", "", text)
+    text = re.sub(r"[^A-Z0-9가-힣]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
+
 
 def safe_float(value: Any) -> float | None:
     try:
@@ -2994,17 +3003,18 @@ def upload_management_costs():
             FROM vessels
         """).fetchall()
 
-        vessel_map = {
-            str(row["name"]).strip().upper(): row["id"]
-            for row in vessel_rows
-            if str(row["name"]).strip()
-        }
+        vessel_map = {}
+
+        for row in vessel_rows:
+            key = normalize_vessel_cost_key(row["name"])
+            if key:
+                vessel_map[key] = row["id"]
 
         updated_count = 0
         failed_vessels: list[str] = []
 
         for vessel_name, year_map in aggregated.items():
-            vessel_id = vessel_map.get(str(vessel_name).strip().upper())
+            vessel_id = vessel_map.get(normalize_vessel_cost_key(vessel_name))
 
             if not vessel_id:
                 failed_vessels.append(vessel_name)
